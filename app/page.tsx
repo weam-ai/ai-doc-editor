@@ -49,7 +49,9 @@ export default function Dashboard() {
 
   const loadDocuments = async () => {
     try {
+      console.log('Loading documents from database', process.env.NEXT_PUBLIC_API_BASE_PATH);
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_PATH}/api/documents`);
+      console.log('response....',response);
       if (response.ok) {
         const docs = await response.json();
         setDocuments(docs);
