@@ -1,0 +1,176 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 262 83% 58%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 84% 4.9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 262 83% 58%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 262 83% 58%;
+    --primary-foreground: 222.2 84% 4.9%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 262 83% 58%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-gray-100 dark:bg-gray-800;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-primary rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-primary/80;
+}
+
+/* Editor styles */
+.ProseMirror {
+  @apply outline-none min-h-[500px] p-4;
+}
+
+/* HTML Editor styles */
+.html-preview {
+  @apply w-full;
+}
+
+.html-preview h1,
+.html-preview h2,
+.html-preview h3,
+.html-preview h4,
+.html-preview h5,
+.html-preview h6 {
+  @apply font-semibold;
+}
+
+.html-preview h1 {
+  @apply text-3xl;
+}
+
+.html-preview h2 {
+  @apply text-2xl;
+}
+
+
+/* 
+.html-preview code {
+  @apply bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-sm font-mono;
+}
+
+.html-preview pre {
+  @apply bg-gray-100 dark:bg-gray-800 p-4 rounded-lg overflow-x-auto;
+}
+
+.html-preview blockquote {
+  @apply border-l-4 border-gray-300 dark:border-gray-600 pl-4 italic;
+}
+
+.html-preview table {
+  @apply w-full border-collapse border border-gray-300 dark:border-gray-600;
+}
+
+.html-preview th,
+.html-preview td {
+  @apply border border-gray-300 dark:border-gray-600 px-3 py-2;
+}
+
+.html-preview th {
+  @apply bg-gray-100 dark:bg-gray-800 font-semibold;
+} */
+
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  @apply text-gray-400 float-left h-0 pointer-events-none;
+}
+
+.ProseMirror h1 {
+  @apply text-3xl font-bold mb-4 text-gray-900 dark:text-gray-100 bg-gray-100 dark:bg-gray-800 p-2 rounded-lg;
+}
+
+.ProseMirror h2 {
+  @apply text-2xl font-semibold mb-3 text-gray-800 dark:text-gray-200 bg-gray-100 dark:bg-gray-800 p-2 rounded-lg;
+}
+
+.ProseMirror h3 {
+  @apply text-xl font-medium mb-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 p-2 rounded-lg;
+}
+
+.ProseMirror p {
+  @apply mb-3 text-gray-700 dark:text-gray-300 leading-relaxed;
+}
+
+.ProseMirror ul, .ProseMirror ol {
+  @apply mb-3 pl-6;
+}
+
+.ProseMirror li {
+  @apply mb-1 text-gray-700 dark:text-gray-300;
+}
+
+.ProseMirror blockquote {
+  @apply border-l-4 border-primary pl-4 italic text-gray-600 dark:text-gray-400 my-4;
+}
+
+.ProseMirror code {
+  @apply bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-sm font-mono;
+}
+
+.ProseMirror pre {
+  @apply bg-gray-100 dark:bg-gray-800 p-4 rounded-lg overflow-x-auto;
+}
+
+.ProseMirror img {
+  @apply max-w-full h-auto rounded-lg shadow-md;
+}
+
