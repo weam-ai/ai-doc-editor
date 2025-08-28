@@ -10,15 +10,15 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getSession();
     
-    if (!session?.user?._id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    // if (!session?.user?._id) {
+    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // }
 
     await dbConnect();
     
     // Fetch documents for the specific user
     const documents = await Document.find({
-      'user.id': session.user._id
+      //'user.id': session.user._id
     })
       .sort({ updatedAt: -1 })
       .select('title createdAt updatedAt tags');

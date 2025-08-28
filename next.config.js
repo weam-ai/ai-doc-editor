@@ -1,14 +1,4 @@
 /** @type {import('next').NextConfig} */
-// const nextConfig = {
-//   images: {
-//     domains: ['localhost'],
-//   },
-// }
-
-// module.exports = nextConfig
-
-
-/** @type {import('next').NextConfig} */
 const nextConfig = {
   assetPrefix: process.env.NEXT_PUBLIC_API_BASE_PATH,
   basePath: process.env.NEXT_PUBLIC_API_BASE_PATH,
