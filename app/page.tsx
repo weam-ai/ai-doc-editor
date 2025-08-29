@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useToast } from '@/hooks/useToast';
 import { formatDate, truncateText } from '@/lib/utils';
 import { allTemplates } from '@/templates';
+import { getSession } from './config/withSession';
 
 interface Document {
   _id: string;
@@ -189,6 +190,17 @@ export default function Dashboard() {
     setDeleteDialogOpen(false);
     setDocumentToDelete(null);
   };
+
+  const [session, setSession] = useState<{ isAuthenticated: boolean } | null>(null);
+
+  // Fetch session data when component mounts
+  useEffect(() => {
+    const fetchSession = async () => {
+      const session = await getSession();
+      console.log('Session data:', session?.user?.email, session?.user?._id, session?.user?.companyId);
+    };
+    fetchSession();
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
