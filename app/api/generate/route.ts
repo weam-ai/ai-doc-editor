@@ -7,7 +7,6 @@ const openai = new OpenAI({
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('Generating document');
     const { prompt, template, isModification = false, currentContent } = await request.json();
 
     if (!prompt) {
@@ -91,14 +90,6 @@ Please return the complete modified HTML document with ONLY the requested change
 
     const generatedContent = completion.choices[0]?.message?.content || '';
     
-    console.log('AI Response type:', isModification ? 'Modification' : 'New Document');
-    console.log('AI Response starts with:', generatedContent.substring(0, 200));
-    console.log('AI Response length:', generatedContent.length);
-    if (isModification) {
-      console.log('Looking for "Your Logo" in response:', generatedContent.includes('Your Logo'));
-      console.log('Looking for "My Logo" in response:', generatedContent.includes('My Logo'));
-    }
-
     let htmlContent;
     if (isModification && currentContent) {
       // For modifications, the AI should return HTML directly
@@ -106,13 +97,9 @@ Please return the complete modified HTML document with ONLY the requested change
       
       // Remove markdown code blocks if AI wrapped the response
       if (cleanContent.includes('```html')) {
-        console.log('AI wrapped response in markdown, extracting HTML content');
         const htmlMatch = cleanContent.match(/```html\s*([\s\S]*?)\s*```/);
         if (htmlMatch) {
           cleanContent = htmlMatch[1];
-          console.log('Extracted HTML from markdown wrapper');
-          console.log('Extracted content length:', cleanContent.length);
-          console.log('Extracted content starts with:', cleanContent.substring(0, 100));
         } else {
           console.warn('Failed to extract HTML from markdown wrapper');
         }
@@ -121,24 +108,20 @@ Please return the complete modified HTML document with ONLY the requested change
       // Validate that the response is actually HTML
       if (cleanContent.trim().startsWith('<!DOCTYPE') || cleanContent.trim().startsWith('<html') || cleanContent.trim().startsWith('<')) {
         htmlContent = cleanContent;
-        console.log('AI returned valid HTML for modification');
         
         // Additional validation: check if the AI actually made the requested change
         if (prompt.toLowerCase().includes('logo') && prompt.toLowerCase().includes('change')) {
           const hasOriginalText = htmlContent.includes('Your Logo');
           const hasModifiedText = htmlContent.includes('My Logo');
-          console.log('Logo change validation - Original text present:', hasOriginalText, 'Modified text present:', hasModifiedText);
           
           // If AI didn't make the change, try to make it ourselves
           if (hasOriginalText && !hasModifiedText && prompt.toLowerCase().includes('my logo')) {
-            console.log('AI didn\'t make the logo change, applying it manually');
             htmlContent = htmlContent.replace(/Your Logo/g, 'My Logo');
           }
         }
       } else {
         // If AI didn't return HTML, fall back to the original content
         console.warn('AI response is not HTML, falling back to original content');
-        console.log('AI response:', cleanContent);
         htmlContent = currentContent;
       }
     } else {
@@ -162,7 +145,6 @@ Please return the complete modified HTML document with ONLY the requested change
 
 async function convertMarkdownToHtml(markdown: string): Promise<string> {
   try {
-    console.log('Converting markdown to HTML');
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [

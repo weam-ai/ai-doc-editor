@@ -110,14 +110,11 @@ export default function Dashboard() {
 
   const handleDocumentClick = async (docId: string) => {
     try {
-      console.log('Attempting to load document with ID:', docId);
       // Load document from database
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_PATH}/api/documents/${docId}`);
-      console.log('Response status:', response.status);
       
       if (response.ok) {
         const doc = await response.json();
-        console.log('Document loaded successfully:', doc);
         // Store in localStorage for editor access
         localStorage.setItem(`document_${docId}`, JSON.stringify(doc));
         router.push(`/editor/${docId}`);
@@ -194,13 +191,12 @@ export default function Dashboard() {
   const [session, setSession] = useState<{ isAuthenticated: boolean } | null>(null);
 
   // Fetch session data when component mounts
-  useEffect(() => {
-    const fetchSession = async () => {
-      const session = await getSession();
-      console.log('Session data:', session?.user?.email, session?.user?._id, session?.user?.companyId);
-    };
-    fetchSession();
-  }, []);
+  // useEffect(() => {
+  //   const fetchSession = async () => {
+  //     const session = await getSession();
+  //   };
+  //   fetchSession();
+  // }, []);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">

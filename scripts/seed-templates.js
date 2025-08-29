@@ -344,8 +344,6 @@ async function seedTemplates() {
     // Insert new templates
     const result = await templatesCollection.insertMany(templates);
     
-    console.log(`Successfully seeded ${result.insertedCount} templates`);
-    
     await client.close();
   } catch (error) {
     console.error('Error seeding templates:', error);

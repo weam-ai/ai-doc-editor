@@ -20,9 +20,9 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <ToastProvider>
-          {/* <SessionValidator> */}
+          <SessionValidator>
             {children}
-          {/* </SessionValidator> */}
+          </SessionValidator>
         </ToastProvider>
       </body>
     </html>

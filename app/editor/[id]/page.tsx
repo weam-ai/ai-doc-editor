@@ -152,14 +152,12 @@ export default function EditorPage() {
   // Debug content changes and update refs
   useEffect(() => {
     if (!isReloading && !contentChangeBlockedRef.current) {
-      console.log('Editor: content changed to:', content?.substring(0, 100) + '...');
       contentRef.current = content;
     }
   }, [content, isReloading]);
 
   useEffect(() => {
     if (!isReloading && !contentChangeBlockedRef.current) {
-      console.log('Editor: contentHtml changed to:', contentHtml?.substring(0, 100) + '...');
       contentHtmlRef.current = contentHtml;
     }
   }, [contentHtml, isReloading]);
@@ -167,19 +165,16 @@ export default function EditorPage() {
   const handleContentChange = (markdown: string, html: string) => {
     // Prevent content changes during save operations
     if (isSaving || isReloading) {
-      console.log('Blocked content change during save/reload operation');
       return;
     }
     
     // Prevent content changes if we have a snapshot (means save just happened)
     if (contentSnapshotRef.current) {
-      console.log('Blocked content change - restore in progress');
       return;
     }
     
     // Prevent content changes if content change is blocked
     if (contentChangeBlockedRef.current) {
-      console.log('Blocked content change - content change blocked');
       return;
     }
     
@@ -218,17 +213,9 @@ export default function EditorPage() {
     // BLOCK ALL CONTENT CHANGES IMMEDIATELY
     contentChangeBlockedRef.current = true;
     
-    console.log('Content snapshot taken before save:', {
-      content: contentSnapshot.content.substring(0, 100),
-      contentHtml: contentSnapshot.contentHtml.substring(0, 100)
-    });
-
     setIsSaving(true);
     setIsReloading(true); // Prevent content reloading during save
     try {
-      // Debug: Log what we're about to save
-      console.log('Saving document with content:', { title, content: content.substring(0, 100), contentHtml: contentHtml.substring(0, 100) });
-      
       const updatedDoc = {
         ...document,
         title,
@@ -264,12 +251,6 @@ export default function EditorPage() {
 
         savedDoc = await response.json();
         
-        // Debug: Log what was returned from the API
-        console.log('API returned saved document:', { 
-          savedContent: savedDoc.content?.substring(0, 100), 
-          savedContentHtml: savedDoc.contentHtml?.substring(0, 100) 
-        });
-        
         // Update the URL to reflect the new document ID
         router.replace(`/editor/${savedDoc._id}`);
         
@@ -300,12 +281,6 @@ export default function EditorPage() {
         }
 
         savedDoc = await response.json();
-        
-        // Debug: Log what was returned from the API for existing document
-        console.log('API returned updated document:', { 
-          savedContent: savedDoc.content?.substring(0, 100), 
-          savedContentHtml: savedDoc.contentHtml?.substring(0, 100) 
-        });
         
         toast({
           title: 'Document saved',
@@ -340,7 +315,6 @@ export default function EditorPage() {
       setIsReloading(false); // Allow content reloading after save
       
       // FORCE RESTORE the content from snapshot IMMEDIATELY
-      console.log('Force restoring content from snapshot after save');
       setContent(contentSnapshot.content);
       setContentHtml(contentSnapshot.contentHtml);
       
@@ -354,13 +328,11 @@ export default function EditorPage() {
       // Clear the snapshot after restore to allow normal editing
       setTimeout(() => {
         contentSnapshotRef.current = null;
-        console.log('Content snapshot cleared, normal editing resumed');
       }, 500);
       
       // Unblock content changes after a longer delay to ensure all effects have run
       setTimeout(() => {
         contentChangeBlockedRef.current = false;
-        console.log('Content change blocking disabled, normal editing fully resumed');
       }, 2000); // Wait 2 seconds to ensure all effects have completed
     }
   };
@@ -889,13 +861,11 @@ export default function EditorPage() {
                     onChange={(newContent: string) => {
                       // Prevent content changes during save operations
                       if (isSaving || isReloading) {
-                        console.log('Blocked HTML editor change during save/reload operation');
                         return;
                       }
                       
                       // Prevent content changes if content change is blocked
                       if (contentChangeBlockedRef.current) {
-                        console.log('Blocked HTML editor change - content change blocked');
                         return;
                       }
                       
