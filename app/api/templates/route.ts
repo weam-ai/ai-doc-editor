@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getSession } from '@/app/config/withSession';
 import dbConnect from '@/lib/db';
 import Template from '@/models/Template';
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getSession();
     
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -18,7 +17,7 @@ export async function GET(request: NextRequest) {
     const templates = await Template.find({
       $or: [
         { isSystem: true },
-        { createdBy: session.user.id }
+        { createdBy: session.user._id }
       ]
     }).sort({ category: 1, name: 1 });
 
@@ -34,7 +33,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getSession();
     
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -58,7 +57,7 @@ export async function POST(request: NextRequest) {
       content,
       contentHtml,
       prompt,
-      createdBy: session.user.id,
+      createdBy: session.user._id,
       isSystem: false,
     });
 

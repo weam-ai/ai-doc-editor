@@ -35,7 +35,7 @@ A modern, AI-powered document editor similar to Genspark AI Docs, built with Nex
 - **Smart Formatting**: AI automatically improves document structure and readability
 
 ### 🔐 Authentication & Security
-- **Google OAuth**: Secure authentication via NextAuth.js
+- **Iron Session**: Secure cookie-based authentication
 - **User Isolation**: Each user's documents are private
 - **MongoDB**: Robust data storage with Mongoose ODM
 
@@ -44,7 +44,7 @@ A modern, AI-powered document editor similar to Genspark AI Docs, built with Nex
 - **Frontend**: Next.js 14 (App Router), TypeScript, TailwindCSS
 - **UI Components**: shadcn/ui, Radix UI primitives
 - **Database**: MongoDB with Mongoose
-- **Authentication**: NextAuth.js with Google provider
+- **Authentication**: Iron Session with secure cookies
 - **AI Integration**: OpenAI GPT-4o-mini API
 - **Rich Text Editor**: Tiptap with comprehensive extensions
 - **Markdown**: React-Markdown with syntax highlighting
@@ -56,7 +56,6 @@ A modern, AI-powered document editor similar to Genspark AI Docs, built with Nex
 - Node.js 18+ 
 - MongoDB instance (local or cloud)
 - OpenAI API key
-- Google OAuth credentials
 
 ### 1. Clone the Repository
 ```bash
@@ -76,26 +75,18 @@ Create a `.env.local` file in the root directory:
 # Database
 MONGODB_URI=mongodb://localhost:27017/aidocs
 
-# NextAuth
-NEXTAUTH_URL=http://localhost:3000
-NEXTAUTH_SECRET=your-secret-key-here
-
-# Google OAuth
-GOOGLE_CLIENT_ID=your-google-client-id
-GOOGLE_CLIENT_SECRET=your-google-client-secret
+# Iron Session
+NEXT_PUBLIC_COOKIE_NAME=weam
+NEXT_PUBLIC_COOKIE_PASSWORD=your-secure-password-here
 
 # OpenAI
 OPENAI_API_KEY=your-openai-api-key
 ```
 
-### 4. Google OAuth Setup
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project or select existing one
-3. Enable Google+ API
-4. Create OAuth 2.0 credentials
-5. Add authorized redirect URIs:
-   - `http://localhost:3000/api/auth/callback/google` (development)
-   - `https://yourdomain.com/api/auth/callback/google` (production)
+### 4. Iron Session Setup
+1. Generate a secure password for cookie encryption
+2. Set the `NEXT_PUBLIC_COOKIE_PASSWORD` environment variable
+3. Customize cookie name if needed via `NEXT_PUBLIC_COOKIE_NAME`
 
 ### 5. OpenAI API Setup
 1. Visit [OpenAI Platform](https://platform.openai.com/)
@@ -123,7 +114,6 @@ Visit `http://localhost:3000` to see your AI Docs application!
 aidocs/
 ├── app/                    # Next.js App Router
 │   ├── api/               # API routes
-│   │   ├── auth/          # NextAuth endpoints
 │   │   ├── documents/     # Document CRUD operations
 │   │   ├── generate/      # AI document generation
 │   │   └── templates/     # Template management
