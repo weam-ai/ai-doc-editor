@@ -42,13 +42,32 @@ const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
     onBlur: () => {
       setIsEditing(false);
     },
+    editorProps: {
+        attributes: {
+          class: `prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none p-4 rounded-lg ${!isEditing ? 'cursor-pointer hover:bg-gray-100 transition-colors' : ''}`,
+        },
+        handleDOMEvents: {
+          click: (view, event) => {
+            if (!isEditing) {
+              setIsEditing(true);
+              return true;
+            }
+            return false;
+          },
+        },
+      },
   });
 
   useEffect(() => {
     if (editor) {
-      editor.setOptions({
-        editable: isEditing,
-      });
+      if (editor.isEditable !== isEditing) {
+        editor.setOptions({
+          editable: isEditing,
+        });
+      }
+      if (isEditing) {
+        editor.commands.focus();
+      }
     }
   }, [isEditing, editor]);
 
@@ -169,12 +188,7 @@ const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
         </BubbleMenu>
       )}
 
-      <div onClick={() => !isEditing && setIsEditing(true)}>
-        <EditorContent
-          editor={editor}
-          className={`prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none p-4 rounded-lg ${!isEditing ? 'cursor-pointer hover:bg-gray-100 transition-colors' : ''}`}
-        />
-      </div>
+      <EditorContent editor={editor} />
     </div>
   );
 };
