@@ -4,11 +4,17 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
 import { Card } from '@/components/ui/Card';
 import { useToast } from '@/hooks/useToast';
-import Editor from '@/components/editor/gdocs/Editor';
+import GDocsEditor from '@/components/editor/gdocs/Editor';
+import RichTextEditor from '@/components/editor/RichTextEditor';
+import MarkdownEditor from '@/components/editor/MarkdownEditor';
+import TwoColumnEditor from '@/components/editor/TwoColumnEditor';
+import AnnualReportEditor from '@/components/editor/AnnualReportEditor';
+import HtmlEditor from '@/components/editor/HtmlEditor';
 import { exportToPDF, exportToWord, exportToHTML } from '@/lib/export';
 import { 
   ArrowLeft, 
@@ -41,7 +47,9 @@ export default function EditorPage() {
   
   const [document, setDocument] = useState<Document | null>(null);
   const [title, setTitle] = useState('');
+  const [content, setContent] = useState('');
   const [contentHtml, setContentHtml] = useState('');
+  const [activeTab, setActiveTab] = useState('rich-text');
   const [isEditing, setIsEditing] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [chatHistory, setChatHistory] = useState<Array<{type: 'user' | 'ai', message: string}>>([]);
@@ -57,7 +65,8 @@ export default function EditorPage() {
         const doc = JSON.parse(storedDoc);
         setDocument(doc);
         setTitle(doc.title);
-        setContentHtml(doc.contentHtml);
+        setContent(doc.content || '');
+        setContentHtml(doc.contentHtml || '');
         setHasUnsavedChanges(!doc._id.startsWith('temp_') && doc._id.length < 24);
       } catch (error) {
         console.error('Error parsing stored document:', error);
@@ -72,15 +81,17 @@ export default function EditorPage() {
     const defaultDoc = {
       _id: `temp_${Date.now()}`,
       title: 'New Document',
-      content: '',
+      content: '# New Document\n\nStart writing your content here...',
       contentHtml: '<h1>New Document</h1><p>Start writing your content here...</p>',
       tags: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      templateName: 'Blank Document'
+      templateName: 'Blank Document',
+      editor: 'gdocs', // Default to new editor
     };
     setDocument(defaultDoc);
     setTitle(defaultDoc.title);
+    setContent(defaultDoc.content);
     setContentHtml(defaultDoc.contentHtml);
     setHasUnsavedChanges(true);
   };
@@ -89,19 +100,34 @@ export default function EditorPage() {
     if (!document) return false;
     if (title !== document.title) return true;
     if (contentHtml !== document.contentHtml) return true;
+    if (content !== document.content) return true;
     return false;
-  }, [document, title, contentHtml]);
+  }, [document, title, contentHtml, content]);
 
   useEffect(() => {
     setHasUnsavedChanges(checkForChanges());
   }, [checkForChanges]);
 
-  const handleContentChange = (html: string) => {
+  const handleContentChange = (newContent: string, newContentHtml?: string) => {
     if (isSaving) return;
-    setContentHtml(html);
+    setContent(newContent);
+    if (newContentHtml) {
+      setContentHtml(newContentHtml);
+    }
     setHasUnsavedChanges(true);
   };
 
+  const handleHtmlContentChange = (html: string) => {
+    if (isSaving) return;
+    setContentHtml(html);
+    // A basic conversion from HTML to text for the markdown view.
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
+    setContent(tempDiv.textContent || tempDiv.innerText || '');
+    setHasUnsavedChanges(true);
+  }
+
+  const memoizedContent = useMemo(() => content, [content]);
   const memoizedContentHtml = useMemo(() => contentHtml, [contentHtml]);
 
   const handleSave = async () => {
@@ -112,7 +138,7 @@ export default function EditorPage() {
       const updatedDoc = {
         ...document,
         title,
-        content: contentHtml.replace(/<[^>]*>/g, ''), // generate plain text content
+        content: content,
         contentHtml,
         updatedAt: new Date().toISOString()
       };
@@ -130,7 +156,7 @@ export default function EditorPage() {
             contentHtml: updatedDoc.contentHtml,
             tags: updatedDoc.tags || [],
             templateName: document.templateName,
-            editor: 'gdocs'
+            editor: document.editor || 'gdocs'
           }),
         });
 
@@ -147,7 +173,7 @@ export default function EditorPage() {
             content: updatedDoc.content,
             contentHtml: updatedDoc.contentHtml,
             tags: updatedDoc.tags || [],
-            editor: 'gdocs'
+            editor: document.editor || 'gdocs'
           }),
         });
 
@@ -178,8 +204,7 @@ export default function EditorPage() {
 
     try {
       const aiResponse = await generateAIResponse(userMessage, contentHtml);
-      setContentHtml(aiResponse);
-      setHasUnsavedChanges(true);
+      handleHtmlContentChange(aiResponse);
       setChatHistory(prev => [...prev, { type: 'ai', message: `I've updated your document based on your request: "${userMessage}"` }]);
       toast({ title: 'Document updated', description: 'Your document has been modified based on your request.' });
     } catch (error) {
@@ -225,6 +250,36 @@ export default function EditorPage() {
     } catch (error) {
       console.error('Download error:', error);
       toast({ title: 'Download failed', description: 'Failed to download document. Please try again.', variant: 'destructive' });
+    }
+  };
+
+  const renderEditor = () => {
+    if (!document) return null;
+
+    switch (document.editor) {
+      case 'html':
+        return <HtmlEditor content={contentHtml} onChange={handleHtmlContentChange} />;
+      case 'two-column':
+        return <TwoColumnEditor content={content} onChange={(md) => handleContentChange(md, contentHtml)} />;
+      case 'annual-report':
+        return <AnnualReportEditor content={content} onChange={(md) => handleContentChange(md, contentHtml)} />;
+      case 'gdocs':
+        return <GDocsEditor content={memoizedContentHtml} onChange={handleHtmlContentChange} />;
+      default:
+        return (
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-4">
+              <TabsTrigger value="rich-text">Rich Text</TabsTrigger>
+              <TabsTrigger value="markdown">Markdown</TabsTrigger>
+            </TabsList>
+            <TabsContent value="rich-text">
+              <RichTextEditor content={memoizedContentHtml} onChange={(html) => handleContentChange(content, html)} />
+            </TabsContent>
+            <TabsContent value="markdown">
+              <MarkdownEditor content={memoizedContent} onChange={(md) => handleContentChange(md, contentHtml)} />
+            </TabsContent>
+          </Tabs>
+        );
     }
   };
 
@@ -303,10 +358,11 @@ export default function EditorPage() {
           </div>
 
           <div className="lg:col-span-4">
-            <Editor
-              content={memoizedContentHtml}
-              onChange={handleContentChange}
-            />
+            <Card className="h-full">
+                <div className="p-4">
+                    {renderEditor()}
+                </div>
+            </Card>
           </div>
         </div>
       </main>
