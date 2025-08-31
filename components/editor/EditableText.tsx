@@ -76,13 +76,13 @@ export default function EditableText({
   // Restore saved selection using offsets
   const restoreSelection = useCallback(() => {
     if (!contentEditableRef.current || !savedSelectionRef.current) return;
-
+    
     const { start, end } = savedSelectionRef.current;
     let charIndex = 0;
     const range = document.createRange();
     range.setStart(contentEditableRef.current, 0);
     range.collapse(true);
-
+    
     const nodeStack: Node[] = [contentEditableRef.current];
     let node: Node | undefined;
     let foundStart = false;
@@ -152,6 +152,15 @@ export default function EditableText({
     });
   }, []);
 
+  // Handle content changes from contentEditable
+  const handleContentChange = useCallback(() => {
+    if (contentEditableRef.current && !isUpdatingFromProps.current) {
+      const newHtml = contentEditableRef.current.innerHTML;
+      saveSelection();
+      onContentChange(newHtml);
+    }
+  }, [onContentChange, saveSelection]);
+
   // Apply formatting to selected text
   const applyFormatting = useCallback((format: Partial<typeof formatting>) => {
     if (!selection) return;
@@ -168,15 +177,6 @@ export default function EditableText({
     handleContentChange();
     setToolbarPosition(prev => ({ ...prev, visible: false }));
   }, [selection, handleContentChange]);
-
-  // Handle content changes from contentEditable
-  const handleContentChange = useCallback(() => {
-    if (contentEditableRef.current && !isUpdatingFromProps.current) {
-      const newHtml = contentEditableRef.current.innerHTML;
-      saveSelection();
-      onContentChange(newHtml);
-    }
-  }, [onContentChange, saveSelection]);
 
   // Handle key events in contentEditable
   const handleKeyDown = useCallback((event: React.KeyboardEvent) => {
@@ -273,6 +273,7 @@ export default function EditableText({
         onInput={handleContentChange}
         onKeyDown={handleKeyDown}
         onPaste={handlePaste}
+        onMouseUp={saveSelection}
         className="min-h-[600px] p-4 overflow-auto [&_*:not(img):not(input):not(button):not(a):not(table):not(ul):not(ol):not(li):not(form):not(fieldset)]:cursor-text [&_*:not(img):not(input):not(button):not(a):not(table):not(ul):not(ol):not(li):not(form):not(fieldset)]:hover:bg-blue-50 [&_*:not(img):not(input):not(button):not(a):not(table):not(ul):not(ol):not(li):not(form):not(fieldset)]:hover:rounded [&_*:not(img):not(input):not(button):not(a):not(table):not(ul):not(ol):not(li):not(form):not(fieldset)]:hover:px-1 [&_*:not(img):not(input):not(button):not(a):not(table):not(ul):not(ol):not(li):not(form):not(fieldset)]:hover:py-0.5 [&_*:not(img):not(input):not(button):not(a):not(table):not(ul):not(ol):not(li):not(form):not(fieldset)]:transition-all [&_*:not(img):not(input):not(button):not(a):not(table):not(ul):not(ol):not(li):not(form):not(fieldset)]:duration-150 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
         style={{ position: 'relative' }}
       />
