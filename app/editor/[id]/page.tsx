@@ -14,6 +14,7 @@ import MarkdownEditor from '@/components/editor/MarkdownEditor';
 import TwoColumnEditor from '@/components/editor/TwoColumnEditor';
 import AnnualReportEditor from '@/components/editor/AnnualReportEditor';
 import HtmlEditor from '@/components/editor/HtmlEditor';
+import ClickableHtmlPreview from '@/components/editor/ClickableHtmlPreview';
 import { exportToPDF, exportToWord, exportToHTML } from '@/lib/export';
 import { 
   ArrowLeft, 
@@ -884,53 +885,57 @@ export default function EditorPage() {
               <div className="p-4">
                 {document?.editor === 'html' ? (
                   // HTML Editor - show directly without tabs
-                  <HtmlEditor
-                    content={contentHtml}
-                    onChange={(newContent: string) => {
-                      // Prevent content changes during save operations
-                      if (isSaving || isReloading) {
-                        console.log('Blocked HTML editor change during save/reload operation');
-                        return;
-                      }
-                      
-                      // Prevent content changes if content change is blocked
-                      if (contentChangeBlockedRef.current) {
-                        console.log('Blocked HTML editor change - content change blocked');
-                        return;
-                      }
-                      
-                      // For HTML editor, only update contentHtml
-                      // Keep content as plain text for markdown editor compatibility
-                      setContentHtml(newContent);
-                      
-                      // Extract plain text from HTML for content
-                      // Remove DOCTYPE, html, head, style tags and their content
-                      let plainText = newContent
-                        .replace(/<!DOCTYPE[^>]*>/gi, '')
-                        .replace(/<html[^>]*>[\s\S]*?<\/html>/gi, (match) => {
-                          // Extract only the body content
-                          const bodyMatch = match.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-                          return bodyMatch ? bodyMatch[1] : match;
-                        })
-                        .replace(/<head[\s\S]*?<\/head>/gi, '')
-                        .replace(/<style[\s\S]*?<\/style>/gi, '')
-                        .replace(/<script[\s\S]*?<\/script>/gi, '')
-                        .replace(/<[^>]*>/g, '') // Remove remaining HTML tags
-                        .replace(/\s+/g, ' ') // Normalize whitespace
-                        .trim();
-                      
-                      // If we still have HTML entities or CSS, clean them up
-                      plainText = plainText
-                        .replace(/&[a-zA-Z0-9#]+;/g, '') // Remove HTML entities
-                        .replace(/\{[^}]*\}/g, '') // Remove CSS rules
-                        .replace(/[a-zA-Z-]+\s*:\s*[^;]+;?/g, '') // Remove CSS properties
-                        .replace(/\s+/g, ' ') // Normalize whitespace again
-                        .trim();
-                      
-                      setContent(plainText);
-                      setHasUnsavedChanges(true);
-                    }}
-                  />
+                  <div className="space-y-4">
+                    <HtmlEditor
+                      content={contentHtml}
+                      onChange={(newContent: string) => {
+                        // Prevent content changes during save operations
+                        if (isSaving || isReloading) {
+                          console.log('Blocked HTML editor change during save/reload operation');
+                          return;
+                        }
+                        
+                        // Prevent content changes if content change is blocked
+                        if (contentChangeBlockedRef.current) {
+                          console.log('Blocked HTML editor change - content change blocked');
+                          return;
+                        }
+                        
+                        // For HTML editor, only update contentHtml
+                        // Keep content as plain text for markdown editor compatibility
+                        setContentHtml(newContent);
+                        
+                        // Extract plain text from HTML for content
+                        // Remove DOCTYPE, html, head, style tags and their content
+                        let plainText = newContent
+                          .replace(/<!DOCTYPE[^>]*>/gi, '')
+                          .replace(/<html[^>]*>[\s\S]*?<\/html>/gi, (match) => {
+                            // Extract only the body content
+                            const bodyMatch = match.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+                            return bodyMatch ? bodyMatch[1] : match;
+                          })
+                          .replace(/<head[\s\S]*?<\/head>/gi, '')
+                          .replace(/<style[\s\S]*?<\/style>/gi, '')
+                          .replace(/<script[\s\S]*?<\/script>/gi, '')
+                          .replace(/<[^>]*>/g, '') // Remove remaining HTML tags
+                          .replace(/\s+/g, ' ') // Normalize whitespace
+                          .trim();
+                        
+                        // If we still have HTML entities or CSS, clean them up
+                        plainText = plainText
+                          .replace(/&[a-zA-Z0-9#]+;/g, '') // Remove HTML entities
+                          .replace(/\{[^}]*\}/g, '') // Remove CSS rules
+                          .replace(/[a-zA-Z-]+\s*:\s*[^;]+;?/g, '') // Remove CSS properties
+                          .replace(/\s+/g, ' ') // Normalize whitespace again
+                          .trim();
+                        
+                        setContent(plainText);
+                        setHasUnsavedChanges(true);
+                      }}
+                    />
+                    
+
+                  </div>
                 ) : (
                   <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                     <TabsList className="grid w-full grid-cols-2 mb-4">
@@ -940,9 +945,27 @@ export default function EditorPage() {
                     
                     <TabsContent value="rich-text" className="mt-0">
                       {showPreview ? (
-                        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 min-h-[600px] p-4 overflow-auto">
-                          <div dangerouslySetInnerHTML={{ __html: memoizedContentHtml }} />
-                        </div>
+                        <ClickableHtmlPreview
+                          htmlContent={memoizedContentHtml}
+                          onContentChange={(newHtml) => {
+                            // Prevent content changes during save operations
+                            if (isSaving || isReloading) {
+                              console.log('Blocked preview change during save/reload operation');
+                              return;
+                            }
+                            
+                            // Prevent content changes if content change is blocked
+                            if (contentChangeBlockedRef.current) {
+                              console.log('Blocked preview change - content change blocked');
+                              return;
+                            }
+                            
+                            setContentHtml(newHtml);
+                            setContent(newHtml.replace(/<[^>]*>/g, '')); // Strip HTML for markdown
+                            setHasUnsavedChanges(true);
+                          }}
+                          className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
+                        />
                       ) : (
                         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 min-h-[600px]">
                           {/* 

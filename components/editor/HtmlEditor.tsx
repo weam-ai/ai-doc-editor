@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/Textarea';
 import { Card } from '@/components/ui/Card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { useState, useEffect } from 'react';
+import ClickableHtmlPreview from './ClickableHtmlPreview';
 
 interface HtmlEditorProps {
   content: string;
@@ -58,19 +59,18 @@ export default function HtmlEditor({ content, onChange }: HtmlEditorProps) {
         <TabsContent value="preview" className="space-y-4">
           <Card className="p-6">
             <h3 className="text-lg font-semibold mb-4">Document Preview</h3>
-            <div className="bg-white border border-gray-200 rounded-lg min-h-[500px] p-6 overflow-auto">
-              {(() => {
-                const extractedContent = extractBodyContent(htmlContent);
-                return (
-                  <div 
-                    dangerouslySetInnerHTML={{ 
-                      __html: extractedContent 
-                    }}
-                    className="html-preview"
-                  />
+            <ClickableHtmlPreview
+              htmlContent={extractBodyContent(htmlContent)}
+              onContentChange={(newHtml) => {
+                // Update the HTML content when text is edited
+                const updatedHtml = htmlContent.replace(
+                  extractBodyContent(htmlContent),
+                  newHtml
                 );
-              })()}
-            </div>
+                handleHtmlChange(updatedHtml);
+              }}
+              className="bg-white border border-gray-200 rounded-lg min-h-[500px]"
+            />
           </Card>
         </TabsContent>
 
