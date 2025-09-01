@@ -7,7 +7,6 @@ const openai = new OpenAI({
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('Generating document');
     const { prompt, template, isModification = false, currentContent } = await request.json();
 
     if (!prompt) {
@@ -62,19 +61,34 @@ User request: ${prompt}
 Please return the complete modified HTML document with ONLY the requested changes applied. Everything else must remain exactly the same.`;
     } else {
       // For new document creation requests
-      systemPrompt = `You are an expert document writer. Create a well-formatted, professional document based on the user's request. 
-      
-      Format the document with proper headings, paragraphs, and structure. Use markdown formatting.
-      
-      The document should be comprehensive, well-written, and ready for professional use.`;
+      systemPrompt = `You are a helpful AI assistant that creates high-quality, professional documents. When a user requests a document, you should:
+
+1. **Be conversational and natural**: Write in a friendly, helpful tone similar to ChatGPT
+2. **Ask clarifying questions when needed**: If the request is vague, suggest improvements or ask for more details
+3. **Provide comprehensive content**: Create detailed, well-structured documents that exceed expectations
+4. **Use proper formatting**: Format documents with clear headings, bullet points, and logical structure using markdown
+5. **Be creative and thoughtful**: Add relevant sections, suggestions, and best practices that enhance the document
+6. **Show expertise**: Demonstrate knowledge of the document type and industry best practices
+7. **Be helpful beyond the request**: Suggest additional sections or considerations that might be valuable
+
+Your goal is to create documents that are not just functional, but impressive and professional. Think like an experienced consultant or professional writer who cares about delivering exceptional quality.
+
+Format your response in well-structured markdown with:
+- Clear headings (# ## ###)
+- Bullet points and numbered lists where appropriate
+- Bold and italic formatting for emphasis
+- Proper paragraph spacing
+- Professional tone while remaining approachable
+
+Remember: You're not just generating content, you're being a helpful assistant who creates outstanding documents.`;
 
       if (template) {
-        systemPrompt += `\n\nUse this template structure as a guide: ${template}`;
+        systemPrompt += `\n\n**Template Reference**: Use this template structure as inspiration, but feel free to enhance and improve upon it:\n${template}`;
       }
     }
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-4o",
       messages: [
         {
           role: "system",
@@ -86,19 +100,11 @@ Please return the complete modified HTML document with ONLY the requested change
         }
       ],
       max_tokens: 4000,
-      temperature: 0.1, // Lower temperature for more consistent modifications
+      temperature: isModification ? 0.1 : 0.7, // Lower temperature for modifications, higher for creative document generation
     });
 
     const generatedContent = completion.choices[0]?.message?.content || '';
     
-    console.log('AI Response type:', isModification ? 'Modification' : 'New Document');
-    console.log('AI Response starts with:', generatedContent.substring(0, 200));
-    console.log('AI Response length:', generatedContent.length);
-    if (isModification) {
-      console.log('Looking for "Your Logo" in response:', generatedContent.includes('Your Logo'));
-      console.log('Looking for "My Logo" in response:', generatedContent.includes('My Logo'));
-    }
-
     let htmlContent;
     if (isModification && currentContent) {
       // For modifications, the AI should return HTML directly
@@ -106,13 +112,9 @@ Please return the complete modified HTML document with ONLY the requested change
       
       // Remove markdown code blocks if AI wrapped the response
       if (cleanContent.includes('```html')) {
-        console.log('AI wrapped response in markdown, extracting HTML content');
         const htmlMatch = cleanContent.match(/```html\s*([\s\S]*?)\s*```/);
         if (htmlMatch) {
           cleanContent = htmlMatch[1];
-          console.log('Extracted HTML from markdown wrapper');
-          console.log('Extracted content length:', cleanContent.length);
-          console.log('Extracted content starts with:', cleanContent.substring(0, 100));
         } else {
           console.warn('Failed to extract HTML from markdown wrapper');
         }
@@ -121,24 +123,20 @@ Please return the complete modified HTML document with ONLY the requested change
       // Validate that the response is actually HTML
       if (cleanContent.trim().startsWith('<!DOCTYPE') || cleanContent.trim().startsWith('<html') || cleanContent.trim().startsWith('<')) {
         htmlContent = cleanContent;
-        console.log('AI returned valid HTML for modification');
         
         // Additional validation: check if the AI actually made the requested change
         if (prompt.toLowerCase().includes('logo') && prompt.toLowerCase().includes('change')) {
           const hasOriginalText = htmlContent.includes('Your Logo');
           const hasModifiedText = htmlContent.includes('My Logo');
-          console.log('Logo change validation - Original text present:', hasOriginalText, 'Modified text present:', hasModifiedText);
           
           // If AI didn't make the change, try to make it ourselves
           if (hasOriginalText && !hasModifiedText && prompt.toLowerCase().includes('my logo')) {
-            console.log('AI didn\'t make the logo change, applying it manually');
             htmlContent = htmlContent.replace(/Your Logo/g, 'My Logo');
           }
         }
       } else {
         // If AI didn't return HTML, fall back to the original content
         console.warn('AI response is not HTML, falling back to original content');
-        console.log('AI response:', cleanContent);
         htmlContent = currentContent;
       }
     } else {
@@ -162,21 +160,20 @@ Please return the complete modified HTML document with ONLY the requested change
 
 async function convertMarkdownToHtml(markdown: string): Promise<string> {
   try {
-    console.log('Converting markdown to HTML');
     const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-4o",
       messages: [
         {
           role: "system",
-          content: "Convert the following markdown to clean HTML. Only return the HTML, no explanations. Use semantic HTML tags and maintain the structure."
+          content: "Convert the following markdown to clean, well-formatted HTML. Use semantic HTML tags, maintain proper structure, and create visually appealing documents with good typography. Only return the HTML, no explanations or markdown code blocks."
         },
         {
           role: "user",
           content: markdown
         }
       ],
-      max_tokens: 2000,
-      temperature: 0.1,
+      max_tokens: 4000,
+      temperature: 0.2,
     });
 
     return response.choices[0]?.message?.content || markdown;
