@@ -1,11 +1,10 @@
 import mongoose from 'mongoose';
-import { MONGODB } from '../app/config/config';
-// const MONGODB_URI = process.env.MONGODB_URI!;
-const dbConfigure = `${MONGODB.DB_USERNAME}${MONGODB.DB_PASSWORD}`;
-const MONGODB_URI = `${MONGODB.DB_CONNECTION}://${dbConfigure}${MONGODB.DB_HOST}${MONGODB.DB_PORT}/${MONGODB.DB_DATABASE}?retryWrites=true&w=majority&readPreference=nearest`;
+import { getMongoDBUri, validateMongoDBUri } from './mongoUri';
 
-if (!MONGODB_URI) {
-  throw new Error('Please define the MONGODB_URI environment variable inside .env.local');
+const MONGODB_URI = getMongoDBUri();
+
+if (!MONGODB_URI || !validateMongoDBUri(MONGODB_URI)) {
+  throw new Error('Invalid MongoDB URI. Please check your MongoDB configuration.');
 }
 
 let cached: {
