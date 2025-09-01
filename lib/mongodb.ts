@@ -1,11 +1,16 @@
 import { MongoClient } from 'mongodb';
-import { getMongoDBUri, validateMongoDBUri } from './mongoUri';
 
-const uri = getMongoDBUri();
+// if (!process.env.MONGODB_URI) {
+//   throw new Error('Invalid/Missing environment variable: "MONGODB_URI"');
+// }
 
-if (!uri || !validateMongoDBUri(uri)) {
-  throw new Error('Invalid MongoDB URI. Please check your MongoDB configuration.');
-}
+// const uri = process.env.MONGODB_URI;
+
+
+import { MONGODB } from '../app/config/config';
+// const MONGODB_URI = process.env.MONGODB_URI!;
+const dbConfigure = `${MONGODB.DB_USERNAME}${MONGODB.DB_PASSWORD}`;
+const uri = `${MONGODB.DB_CONNECTION}://${dbConfigure}${MONGODB.DB_HOST}${MONGODB.DB_PORT}/${MONGODB.DB_DATABASE}?retryWrites=true&w=majority&readPreference=nearest`;
 
 const options = {};
 
