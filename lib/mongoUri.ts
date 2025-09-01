@@ -12,8 +12,8 @@ export function getMongoDBUri(directUri?: string): string {
   }
 
   // Check if MONGODB_URI environment variable exists and use it
-  if (process.env.MONGODB_URI && process.env.MONGODB_URI.trim()) {
-    return process.env.MONGODB_URI.trim();
+  if (process.env.MONOGODB_URI && process.env.MONOGODB_URI.trim()) {
+    return process.env.MONOGODB_URI.trim();
   }
 
   // Construct URI from individual environment variables via config
