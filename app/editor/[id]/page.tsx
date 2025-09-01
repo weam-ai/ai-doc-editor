@@ -119,7 +119,8 @@ export default function EditorPage() {
       tags: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      templateName: 'Blank Document'
+      templateName: 'Blank Document',
+      editor: 'rich-text' // Set default editor to valid enum value
     };
     setDocument(defaultDoc);
     setTitle(defaultDoc.title);
@@ -152,14 +153,12 @@ export default function EditorPage() {
   // Debug content changes and update refs
   useEffect(() => {
     if (!isReloading && !contentChangeBlockedRef.current) {
-      console.log('Editor: content changed to:', content?.substring(0, 100) + '...');
       contentRef.current = content;
     }
   }, [content, isReloading]);
 
   useEffect(() => {
     if (!isReloading && !contentChangeBlockedRef.current) {
-      console.log('Editor: contentHtml changed to:', contentHtml?.substring(0, 100) + '...');
       contentHtmlRef.current = contentHtml;
     }
   }, [contentHtml, isReloading]);
@@ -167,19 +166,16 @@ export default function EditorPage() {
   const handleContentChange = (markdown: string, html: string) => {
     // Prevent content changes during save operations
     if (isSaving || isReloading) {
-      console.log('Blocked content change during save/reload operation');
       return;
     }
     
     // Prevent content changes if we have a snapshot (means save just happened)
     if (contentSnapshotRef.current) {
-      console.log('Blocked content change - restore in progress');
       return;
     }
     
     // Prevent content changes if content change is blocked
     if (contentChangeBlockedRef.current) {
-      console.log('Blocked content change - content change blocked');
       return;
     }
     
@@ -218,17 +214,9 @@ export default function EditorPage() {
     // BLOCK ALL CONTENT CHANGES IMMEDIATELY
     contentChangeBlockedRef.current = true;
     
-    console.log('Content snapshot taken before save:', {
-      content: contentSnapshot.content.substring(0, 100),
-      contentHtml: contentSnapshot.contentHtml.substring(0, 100)
-    });
-
     setIsSaving(true);
     setIsReloading(true); // Prevent content reloading during save
     try {
-      // Debug: Log what we're about to save
-      console.log('Saving document with content:', { title, content: content.substring(0, 100), contentHtml: contentHtml.substring(0, 100) });
-      
       const updatedDoc = {
         ...document,
         title,
@@ -264,12 +252,6 @@ export default function EditorPage() {
 
         savedDoc = await response.json();
         
-        // Debug: Log what was returned from the API
-        console.log('API returned saved document:', { 
-          savedContent: savedDoc.content?.substring(0, 100), 
-          savedContentHtml: savedDoc.contentHtml?.substring(0, 100) 
-        });
-        
         // Update the URL to reflect the new document ID
         router.replace(`/editor/${savedDoc._id}`);
         
@@ -300,12 +282,6 @@ export default function EditorPage() {
         }
 
         savedDoc = await response.json();
-        
-        // Debug: Log what was returned from the API for existing document
-        console.log('API returned updated document:', { 
-          savedContent: savedDoc.content?.substring(0, 100), 
-          savedContentHtml: savedDoc.contentHtml?.substring(0, 100) 
-        });
         
         toast({
           title: 'Document saved',
@@ -340,7 +316,6 @@ export default function EditorPage() {
       setIsReloading(false); // Allow content reloading after save
       
       // FORCE RESTORE the content from snapshot IMMEDIATELY
-      console.log('Force restoring content from snapshot after save');
       setContent(contentSnapshot.content);
       setContentHtml(contentSnapshot.contentHtml);
       
@@ -354,13 +329,11 @@ export default function EditorPage() {
       // Clear the snapshot after restore to allow normal editing
       setTimeout(() => {
         contentSnapshotRef.current = null;
-        console.log('Content snapshot cleared, normal editing resumed');
       }, 500);
       
       // Unblock content changes after a longer delay to ensure all effects have run
       setTimeout(() => {
         contentChangeBlockedRef.current = false;
-        console.log('Content change blocking disabled, normal editing fully resumed');
       }, 2000); // Wait 2 seconds to ensure all effects have completed
     }
   };
@@ -409,6 +382,34 @@ export default function EditorPage() {
     // console.log('AI Request:', request);
     // console.log('Current content length:', currentContent.length);
     
+    // Detect if this is a new/template document or an existing document with real content
+    const isNewOrTemplateDocument = (content: string) => {
+      // Check for default blank document content
+      if (content.includes('Start writing your content here...') || 
+          content.includes('New Document')) {
+        return true;
+      }
+      
+      // Check for template placeholder patterns
+      if (content.includes('[Your Name]') || 
+          content.includes('[Write a compelling') ||
+          content.includes('[Key achievement') ||
+          content.includes('[Company Name]') ||
+          content.includes('[your.email@example.com]') ||
+          content.includes('Start writing your business proposal content here...')) {
+        return true;
+      }
+      
+      // If content is very short (less than 100 chars), likely new
+      if (content.trim().length < 100) {
+        return true;
+      }
+      
+      return false;
+    };
+    
+    const isModification = !isNewOrTemplateDocument(currentContent);
+    
     try {
       // Call OpenAI API to handle the request intelligently
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_PATH}/api/generate`, {
@@ -419,7 +420,7 @@ export default function EditorPage() {
         body: JSON.stringify({
           prompt: request,
           template: null,
-          isModification: true,
+          isModification: isModification,
           currentContent: currentContent
         }),
       });
@@ -434,11 +435,16 @@ export default function EditorPage() {
       // console.log('Response contentHtml starts with:', data.contentHtml?.substring(0, 200));
       
       if (data.contentHtml && data.contentHtml.trim().startsWith('<')) {
-        // console.log('Returning modified HTML content');
+        // console.log('Returning HTML content');
         return data.contentHtml;
+      } else if (!isModification && data.content) {
+        // For new document creation, if no HTML is provided, return the raw content
+        // This allows ChatGPT-like responses to be displayed as-is
+        console.log('New document creation - returning raw content');
+        return data.content;
       } else {
-        // Fallback if no valid HTML content
-        // console.warn('AI response is not valid HTML, falling back to original content');
+        // Fallback if no valid content
+        console.warn('AI response has no valid content, falling back to original content');
         return currentContent;
       }
     } catch (error) {
@@ -889,13 +895,11 @@ export default function EditorPage() {
                     onChange={(newContent: string) => {
                       // Prevent content changes during save operations
                       if (isSaving || isReloading) {
-                        console.log('Blocked HTML editor change during save/reload operation');
                         return;
                       }
                       
                       // Prevent content changes if content change is blocked
                       if (contentChangeBlockedRef.current) {
-                        console.log('Blocked HTML editor change - content change blocked');
                         return;
                       }
                       

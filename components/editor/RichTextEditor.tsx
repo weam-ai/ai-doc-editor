@@ -403,7 +403,6 @@ const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
 
   const applyBackgroundColor = (color: string) => {
     if (editor) {
-      console.log('Applying background color:', color); // Debug log
       const { from, to } = editor.state.selection;
       if (from === to) {
         // No text selected, insert text with background color
@@ -612,7 +611,6 @@ const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
                 defaultValue={selectedColor}
                 onChange={(e) => {
                   const newColor = e.target.value;
-                  console.log('Text color changed to:', newColor); // Debug log
                   setSelectedColor(newColor);
                 }}
                 className="w-12 h-10 border rounded cursor-pointer"
@@ -639,7 +637,6 @@ const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
                 key={color}
                 onClick={() => {
                   setSelectedColor(color);
-                  console.log('Quick text color selected:', color); // Debug log
                 }}
                 className="w-8 h-8 rounded border-2 border-gray-300 hover:border-gray-500 transition-colors"
                 style={{ backgroundColor: color }}
@@ -666,7 +663,6 @@ const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
                 defaultValue={selectedBgColor}
                 onChange={(e) => {
                   const newColor = e.target.value;
-                  console.log('Background color changed to:', newColor); // Debug log
                   setSelectedBgColor(newColor);
                 }}
                 className="w-12 h-10 border rounded cursor-pointer"
@@ -696,7 +692,6 @@ const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
                 key={color}
                 onClick={() => {
                   setSelectedBgColor(color);
-                  console.log('Quick color selected:', color); // Debug log
                 }}
                 className="w-8 h-8 rounded border-2 border-gray-300 hover:border-gray-500 transition-colors"
                 style={{ backgroundColor: color }}

@@ -15,11 +15,9 @@ export async function GET(
     //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     // }
 
-    console.log('Fetching document with ID:', params.id);
     
     // Validate ObjectId format
     if (!mongoose.Types.ObjectId.isValid(params.id)) {
-      console.log('Invalid ObjectId format:', params.id);
       return NextResponse.json({ error: 'Invalid document ID format' }, { status: 400 });
     }
     
@@ -30,8 +28,6 @@ export async function GET(
       // Temporarily remove user check for testing
       // userId: session.user.id,
     });
-
-    console.log('Document found:', document ? 'Yes' : 'No');
 
     if (!document) {
       return NextResponse.json({ error: 'Document not found' }, { status: 404 });
