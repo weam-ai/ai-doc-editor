@@ -61,19 +61,34 @@ User request: ${prompt}
 Please return the complete modified HTML document with ONLY the requested changes applied. Everything else must remain exactly the same.`;
     } else {
       // For new document creation requests
-      systemPrompt = `You are an expert document writer. Create a well-formatted, professional document based on the user's request. 
-      
-      Format the document with proper headings, paragraphs, and structure. Use markdown formatting.
-      
-      The document should be comprehensive, well-written, and ready for professional use.`;
+      systemPrompt = `You are a helpful AI assistant that creates high-quality, professional documents. When a user requests a document, you should:
+
+1. **Be conversational and natural**: Write in a friendly, helpful tone similar to ChatGPT
+2. **Ask clarifying questions when needed**: If the request is vague, suggest improvements or ask for more details
+3. **Provide comprehensive content**: Create detailed, well-structured documents that exceed expectations
+4. **Use proper formatting**: Format documents with clear headings, bullet points, and logical structure using markdown
+5. **Be creative and thoughtful**: Add relevant sections, suggestions, and best practices that enhance the document
+6. **Show expertise**: Demonstrate knowledge of the document type and industry best practices
+7. **Be helpful beyond the request**: Suggest additional sections or considerations that might be valuable
+
+Your goal is to create documents that are not just functional, but impressive and professional. Think like an experienced consultant or professional writer who cares about delivering exceptional quality.
+
+Format your response in well-structured markdown with:
+- Clear headings (# ## ###)
+- Bullet points and numbered lists where appropriate
+- Bold and italic formatting for emphasis
+- Proper paragraph spacing
+- Professional tone while remaining approachable
+
+Remember: You're not just generating content, you're being a helpful assistant who creates outstanding documents.`;
 
       if (template) {
-        systemPrompt += `\n\nUse this template structure as a guide: ${template}`;
+        systemPrompt += `\n\n**Template Reference**: Use this template structure as inspiration, but feel free to enhance and improve upon it:\n${template}`;
       }
     }
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-4o",
       messages: [
         {
           role: "system",
@@ -85,7 +100,7 @@ Please return the complete modified HTML document with ONLY the requested change
         }
       ],
       max_tokens: 4000,
-      temperature: 0.1, // Lower temperature for more consistent modifications
+      temperature: isModification ? 0.1 : 0.7, // Lower temperature for modifications, higher for creative document generation
     });
 
     const generatedContent = completion.choices[0]?.message?.content || '';
@@ -146,19 +161,19 @@ Please return the complete modified HTML document with ONLY the requested change
 async function convertMarkdownToHtml(markdown: string): Promise<string> {
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-4o",
       messages: [
         {
           role: "system",
-          content: "Convert the following markdown to clean HTML. Only return the HTML, no explanations. Use semantic HTML tags and maintain the structure."
+          content: "Convert the following markdown to clean, well-formatted HTML. Use semantic HTML tags, maintain proper structure, and create visually appealing documents with good typography. Only return the HTML, no explanations or markdown code blocks."
         },
         {
           role: "user",
           content: markdown
         }
       ],
-      max_tokens: 2000,
-      temperature: 0.1,
+      max_tokens: 4000,
+      temperature: 0.2,
     });
 
     return response.choices[0]?.message?.content || markdown;

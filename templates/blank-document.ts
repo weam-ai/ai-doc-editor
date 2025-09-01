@@ -5,7 +5,7 @@ export const blankDocumentTemplate = {
   category: 'all',
   prompt: 'Create a blank document',
   preview: '📄',
-  editor: 'default',
+  editor: 'rich-text',
   content: '# New Document\n\nStart writing your content here...',
   contentHtml: '<h1>New Document</h1><p>Start writing your content here...</p>'
 };

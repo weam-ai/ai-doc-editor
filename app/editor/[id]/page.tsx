@@ -119,7 +119,8 @@ export default function EditorPage() {
       tags: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      templateName: 'Blank Document'
+      templateName: 'Blank Document',
+      editor: 'rich-text' // Set default editor to valid enum value
     };
     setDocument(defaultDoc);
     setTitle(defaultDoc.title);
@@ -381,6 +382,34 @@ export default function EditorPage() {
     // console.log('AI Request:', request);
     // console.log('Current content length:', currentContent.length);
     
+    // Detect if this is a new/template document or an existing document with real content
+    const isNewOrTemplateDocument = (content: string) => {
+      // Check for default blank document content
+      if (content.includes('Start writing your content here...') || 
+          content.includes('New Document')) {
+        return true;
+      }
+      
+      // Check for template placeholder patterns
+      if (content.includes('[Your Name]') || 
+          content.includes('[Write a compelling') ||
+          content.includes('[Key achievement') ||
+          content.includes('[Company Name]') ||
+          content.includes('[your.email@example.com]') ||
+          content.includes('Start writing your business proposal content here...')) {
+        return true;
+      }
+      
+      // If content is very short (less than 100 chars), likely new
+      if (content.trim().length < 100) {
+        return true;
+      }
+      
+      return false;
+    };
+    
+    const isModification = !isNewOrTemplateDocument(currentContent);
+    
     try {
       // Call OpenAI API to handle the request intelligently
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_PATH}/api/generate`, {
@@ -391,7 +420,7 @@ export default function EditorPage() {
         body: JSON.stringify({
           prompt: request,
           template: null,
-          isModification: true,
+          isModification: isModification,
           currentContent: currentContent
         }),
       });
@@ -406,11 +435,16 @@ export default function EditorPage() {
       // console.log('Response contentHtml starts with:', data.contentHtml?.substring(0, 200));
       
       if (data.contentHtml && data.contentHtml.trim().startsWith('<')) {
-        // console.log('Returning modified HTML content');
+        // console.log('Returning HTML content');
         return data.contentHtml;
+      } else if (!isModification && data.content) {
+        // For new document creation, if no HTML is provided, return the raw content
+        // This allows ChatGPT-like responses to be displayed as-is
+        console.log('New document creation - returning raw content');
+        return data.content;
       } else {
-        // Fallback if no valid HTML content
-        // console.warn('AI response is not valid HTML, falling back to original content');
+        // Fallback if no valid content
+        console.warn('AI response has no valid content, falling back to original content');
         return currentContent;
       }
     } catch (error) {
