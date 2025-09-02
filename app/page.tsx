@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/useToast';
 import { formatDate, truncateText } from '@/lib/utils';
 import { allTemplates } from '@/templates';
 import { getSession } from './config/withSession';
+import { TemplatePreview } from '@/components/TemplatePreview';
 
 interface Document {
   _id: string;
@@ -232,17 +233,19 @@ export default function Dashboard() {
           
           {/* Your Saved Documents Section */}
           <div className="space-y-3">
-            <button 
+            <Button 
+              variant="outline"
+              size="sm"
               onClick={() => {
                 const currentUrl = window.location.href;
                 const url = new URL(currentUrl);
                 const mainDomain = `${url.protocol}//${url.hostname}${url.port ? ':' + url.port : ''}`;
                 window.location.href = mainDomain;
               }}
-              className="text-[#6336e8] hover:text-[#5429d1] dark:text-[#7c4dff] dark:hover:text-[#6336e8] cursor-pointer transition-colors"
+              className="w-full text-xs"
             >
               Back to App
-            </button>
+            </Button>
             <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
               Your Saved Documents
             </h3>
@@ -334,14 +337,29 @@ export default function Dashboard() {
                       className="hover:shadow-lg transition-shadow cursor-pointer group"
                       onClick={() => handleTemplateClick(template)}
                     >
-                      <CardContent className="p-6">
-                        <div className="text-4xl mb-4 text-center">{template.preview}</div>
-                        <h3 className="font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-primary transition-colors">
+                      <CardContent className="p-4">
+                        <div className="h-48 mb-3 overflow-hidden rounded-lg bg-gray-50 dark:bg-gray-800 flex items-center justify-center">
+                          {template.contentHtml ? (
+                            <TemplatePreview 
+                              contentHtml={template.contentHtml} 
+                              className="w-full h-full"
+                            />
+                          ) : template._id === '1' ? (
+                            // Special case for blank document - show plus icon
+                            <div className="flex items-center justify-center text-gray-400">
+                              <div className="w-16 h-16 border-2 border-gray-400 rounded-lg flex items-center justify-center">
+                                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                </svg>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-4xl text-gray-400">{template.preview}</div>
+                          )}
+                        </div>
+                        <h3 className="font-semibold text-gray-900 dark:text-white text-center group-hover:text-primary transition-colors">
                           {template.name}
                         </h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {template.description}
-                        </p>
                       </CardContent>
                     </Card>
                   ))}

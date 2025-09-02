@@ -6,6 +6,6 @@ export const blankDocumentTemplate = {
   prompt: 'Create a blank document',
   preview: '📄',
   editor: 'rich-text',
-  content: '# New Document\n\nStart writing your content here...',
-  contentHtml: '<h1>New Document</h1><p>Start writing your content here...</p>'
+  content: '# New Document\n\nStart writing your content here...'
+  // No contentHtml - this will make it show the simple plus icon instead of HTML preview
 };
