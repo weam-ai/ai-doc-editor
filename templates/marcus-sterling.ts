@@ -1,6 +1,6 @@
 export const marcusSterlingPortfolioTemplate = {
-    _id: 'sarah-mitchell-resume',
-    name: 'Sarah Mitchell Resume',
+    _id: 'marcus-sterling-portfolio',
+    name: 'Marcus Sterling Portfolio',
     description: 'Create and edit HTML documents with inline styles',
     category: 'job-applications',
     prompt: 'Create an HTML document with inline styles',
