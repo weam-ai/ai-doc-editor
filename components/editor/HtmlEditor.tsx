@@ -57,8 +57,7 @@ export default function HtmlEditor({ content, onChange }: HtmlEditorProps) {
 
         <TabsContent value="preview" className="space-y-4">
           <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4">Document Preview</h3>
-            <div className="bg-white border border-gray-200 rounded-lg min-h-[500px] p-6 overflow-auto">
+            <div className="bg-white min-h-[500px] p-6 overflow-auto">
               {(() => {
                 const extractedContent = extractBodyContent(htmlContent);
                 return (
