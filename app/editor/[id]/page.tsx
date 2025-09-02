@@ -456,15 +456,19 @@ export default function EditorPage() {
   };
 
   const handleTopToolbarAction = (action: string, value?: string) => {
-    if (activeTab !== 'rich-text') {
+    // Allow toolbar actions for rich-text tab or HTML editor
+    const isRichTextMode = activeTab === 'rich-text';
+    const isHtmlEditor = document?.editor === 'html';
+    
+    if (!isRichTextMode && !isHtmlEditor) {
       toast({
-        title: 'Switch to Rich Text',
-        description: 'Please switch to Rich Text mode to use formatting tools.',
+        title: 'Switch to Rich Text or HTML Editor',
+        description: 'Please switch to Rich Text mode or use HTML Editor to use formatting tools.',
       });
       return;
     }
 
-    // Send the action to the RichTextEditor via a custom event
+    // Send the action to the appropriate editor via a custom event
     const event = new CustomEvent('toolbar-action', { 
       detail: { action, value, content, contentHtml } 
     });
