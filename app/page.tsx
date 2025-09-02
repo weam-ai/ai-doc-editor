@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { FileText, Grid, Trash2 } from 'lucide-react';
+import { FileText, Grid, Trash2, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
@@ -244,6 +244,7 @@ export default function Dashboard() {
               }}
               className="w-full text-xs"
             >
+              <ArrowLeft className="w-4 h-4 mr-2" />
               Back to App
             </Button>
             <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
