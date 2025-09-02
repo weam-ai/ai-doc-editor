@@ -232,17 +232,19 @@ export default function Dashboard() {
           
           {/* Your Saved Documents Section */}
           <div className="space-y-3">
-            <button 
+            <Button 
+              variant="outline"
+              size="sm"
               onClick={() => {
                 const currentUrl = window.location.href;
                 const url = new URL(currentUrl);
                 const mainDomain = `${url.protocol}//${url.hostname}${url.port ? ':' + url.port : ''}`;
                 window.location.href = mainDomain;
               }}
-              className="text-[#6336e8] hover:text-[#5429d1] dark:text-[#7c4dff] dark:hover:text-[#6336e8] cursor-pointer transition-colors"
+              className="w-full text-xs"
             >
               Back to App
-            </button>
+            </Button>
             <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
               Your Saved Documents
             </h3>

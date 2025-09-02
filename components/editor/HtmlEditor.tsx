@@ -90,54 +90,7 @@ export default function HtmlEditor({ content, onChange }: HtmlEditorProps) {
                   className="font-mono text-sm"
                 />
               </div>
-              <div className="flex space-x-2">
-                <Button 
-                  onClick={() => handleHtmlChange(`<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>New HTML Document</title>
-</head>
-<body>
-    <h1>New Document</h1>
-    <p>Start building your HTML document here.</p>
-</body>
-</html>`)}
-                  variant="outline"
-                >
-                  Reset to Default
-                </Button>
-                <Button 
-                  onClick={() => handleHtmlChange(`<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Styled Document</title>
-</head>
-<body style="font-family: Arial, sans-serif; margin: 40px; background-color: #f5f5f5;">
-    <div style="background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-        <h1 style="color: #333; text-align: center; margin-bottom: 30px;">Welcome to Your Document</h1>
-        <p style="color: #666; line-height: 1.6; margin-bottom: 20px;">This is a beautifully styled HTML document with inline CSS. You can customize the styles and content to match your needs.</p>
-        <div style="background: #f8f9fa; padding: 20px; border-left: 4px solid #007bff; margin: 20px 0;">
-            <h2 style="color: #007bff; margin-top: 0;">Key Features</h2>
-            <ul style="color: #555;">
-                <li>Inline CSS styling</li>
-                <li>Responsive design</li>
-                <li>Easy to customize</li>
-                <li>Professional appearance</li>
-            </ul>
-        </div>
-        <p style="color: #666; text-align: center; font-style: italic;">Edit the HTML above to see your changes in real-time!</p>
-    </div>
-</body>
-</html>`)}
-                  variant="outline"
-                >
-                  Load Styled Template
-                </Button>
-              </div>
+
             </div>
           </Card>
         </TabsContent>

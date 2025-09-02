@@ -521,12 +521,12 @@ export default function EditorPage() {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-4">
               <Button
-                variant="ghost"
-                size="icon"
+                variant="outline"
+                size="sm"
                 onClick={() => router.push('/')}
-                className="mr-2"
+                className="mr-6"
               >
-                <ArrowLeft className="w-4 h-4" />
+                Back to Templates
               </Button>
               <Button variant="ghost" size="icon">
                 <Menu className="w-4 h-4" />
@@ -545,17 +545,17 @@ export default function EditorPage() {
                     <ChevronDown className="w-4 h-4" />
                   </Button>
                 )}
-                {document?.isTemplate && (
+                {/* {document?.isTemplate && (
                   <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
                     Template Preview
                   </span>
-                )}
+                )} */}
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              <Button variant="ghost" size="icon">
+              {/* <Button variant="ghost" size="icon">
                 <Star className="w-4 h-4" />
-              </Button>
+              </Button> */}
               <Button onClick={handleSave} disabled={!hasUnsavedChanges || isSaving}>
                 {isSaving ? (
                   <div className="flex items-center">
@@ -851,9 +851,9 @@ export default function EditorPage() {
                   {isLoading && (
                     <div className="flex items-center justify-center py-2">
                       <div className="flex space-x-1">
-                        <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce"></div>
-                        <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                        <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                        <div className="w-3 h-3 rounded-full animate-bounce" style={{ backgroundColor: '#6336e8' }}></div>
+                        <div className="w-3 h-3 rounded-full animate-bounce" style={{ backgroundColor: '#6336e8', animationDelay: '0.1s' }}></div>
+                        <div className="w-3 h-3 rounded-full animate-bounce" style={{ backgroundColor: '#6336e8', animationDelay: '0.2s' }}></div>
                       </div>
                     </div>
                   )}
@@ -873,7 +873,7 @@ export default function EditorPage() {
           {/* Right Panel - Editor */}
           <div className="lg:col-span-4">
             <Card className="h-full">
-              <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+              {/* <div className="p-4 border-b border-gray-200 dark:border-gray-700">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Button
@@ -885,7 +885,7 @@ export default function EditorPage() {
                     </Button>
                   </div>
                 </div>
-              </div>
+              </div> */}
 
               <div className="p-4">
                 {document?.editor === 'html' ? (
