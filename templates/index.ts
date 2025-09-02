@@ -33,6 +33,6 @@ export const allTemplates = [
   marketingOnboardingTemplate,
   q2BusinessReportTemplate,
   modernStartupTemplate,
-  projectStatusTemplate
+  // projectStatusTemplate
 
 ];
