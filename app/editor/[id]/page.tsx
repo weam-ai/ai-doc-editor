@@ -76,6 +76,7 @@ export default function EditorPage() {
   const [docRequest, setDocRequest] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isReloading, setIsReloading] = useState(false);
+  const [downloadFormat, setDownloadFormat] = useState<string>('');
   
   // Use refs to preserve content during save operations
   const contentRef = useRef(content);
@@ -504,6 +505,9 @@ export default function EditorPage() {
         description: 'Failed to download document. Please try again.',
         variant: 'destructive',
       });
+    } finally {
+      // Reset the download format to allow the same option to be selected again
+      setTimeout(() => setDownloadFormat(''), 100);
     }
   };
 
@@ -521,12 +525,13 @@ export default function EditorPage() {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-4">
               <Button
-                variant="ghost"
-                size="icon"
+                variant="outline"
+                size="sm"
                 onClick={() => router.push('/')}
-                className="mr-2"
+                className="mr-6"
               >
-                <ArrowLeft className="w-4 h-4" />
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Templates
               </Button>
               <Button variant="ghost" size="icon">
                 <Menu className="w-4 h-4" />
@@ -545,17 +550,17 @@ export default function EditorPage() {
                     <ChevronDown className="w-4 h-4" />
                   </Button>
                 )}
-                {document?.isTemplate && (
+                {/* {document?.isTemplate && (
                   <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
                     Template Preview
                   </span>
-                )}
+                )} */}
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              <Button variant="ghost" size="icon">
+              {/* <Button variant="ghost" size="icon">
                 <Star className="w-4 h-4" />
-              </Button>
+              </Button> */}
               <Button onClick={handleSave} disabled={!hasUnsavedChanges || isSaving}>
                 {isSaving ? (
                   <div className="flex items-center">
@@ -572,7 +577,13 @@ export default function EditorPage() {
                   </>
                 )}
               </Button>
-              <Select onValueChange={(value) => handleDownload(value)}>
+              <Select 
+                value={downloadFormat} 
+                onValueChange={(value) => {
+                  setDownloadFormat(value);
+                  handleDownload(value);
+                }}
+              >
                 <SelectTrigger className="w-32">
                   <Download className="w-4 h-4 mr-2" />
                   Download
@@ -588,217 +599,7 @@ export default function EditorPage() {
         </div>
       </header>
 
-      {/* Top Toolbar */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-2">
-        <div className="flex items-center space-x-2">
-          <div className="flex items-center space-x-1">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-8 w-8"
-              onClick={() => handleTopToolbarAction('bold')}
-            >
-              <Bold className="w-4 h-4" />
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-8 w-8"
-              onClick={() => handleTopToolbarAction('italic')}
-            >
-              <Italic className="w-4 h-4" />
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-8 w-8"
-              onClick={() => handleTopToolbarAction('underline')}
-            >
-              <Underline className="w-4 h-4" />
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-8 w-8"
-              onClick={() => handleTopToolbarAction('strikethrough')}
-            >
-              <Strikethrough className="w-4 h-4" />
-            </Button>
-          </div>
 
-          <div className="w-px h-6 bg-gray-300 dark:bg-gray-600" />
-
-          <div className="flex items-center space-x-1">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-8 w-8"
-              onClick={() => handleTopToolbarAction('align-left')}
-            >
-              <AlignLeft className="w-4 h-4" />
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-8 w-8"
-              onClick={() => handleTopToolbarAction('align-center')}
-            >
-              <AlignCenter className="w-4 h-4" />
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-8 w-8"
-              onClick={() => handleTopToolbarAction('align-right')}
-            >
-              <AlignRight className="w-4 h-4" />
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-8 w-8"
-              onClick={() => handleTopToolbarAction('align-justify')}
-            >
-              <AlignJustify className="w-4 h-4" />
-            </Button>
-          </div>
-
-          <div className="w-px h-6 bg-gray-300 dark:bg-gray-600" />
-
-          <div className="flex items-center space-x-1">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-8 w-8"
-              onClick={() => handleTopToolbarAction('bullet-list')}
-            >
-              <List className="w-4 h-4" />
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-8 w-8"
-              onClick={() => handleTopToolbarAction('ordered-list')}
-            >
-              <ListOrdered className="w-4 h-4" />
-            </Button>
-          </div>
-
-          <div className="w-px h-6 bg-gray-300 dark:bg-gray-600" />
-
-          <div className="flex items-center space-x-1">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-8 w-8"
-              onClick={() => handleTopToolbarAction('link')}
-            >
-              <Link className="w-4 h-4" />
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-8 w-8"
-              onClick={() => handleTopToolbarAction('unlink')}
-              title="Remove link"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-.758l1.102-1.101a4 4 0 00-5.656-5.656l-4 4a4 4 0 105.656 5.656l1.102-1.101" />
-              </svg>
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-8 w-8"
-              onClick={() => handleTopToolbarAction('image')}
-            >
-              <Image className="w-4 h-4" />
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-8 w-8"
-              onClick={() => handleTopToolbarAction('table')}
-            >
-              <Table className="w-4 h-4" />
-            </Button>
-          </div>
-
-          <div className="w-px h-6 bg-gray-300 dark:bg-gray-600" />
-
-          <div className="flex items-center space-x-1">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-8 w-8"
-              onClick={() => handleTopToolbarAction('color')}
-            >
-              <Palette className="w-4 h-4" />
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-8 w-8"
-              onClick={() => handleTopToolbarAction('highlight')}
-            >
-              <Highlighter className="w-4 h-4" />
-            </Button>
-          </div>
-
-          <div className="w-px h-6 bg-gray-300 dark:bg-gray-600" />
-
-          <div className="flex items-center space-x-2">
-            <Select value="normal" onValueChange={(value) => {
-              if (value === 'normal') {
-                handleTopToolbarAction('paragraph');
-              } else if (value === 'heading1') {
-                handleTopToolbarAction('heading', '1');
-              } else if (value === 'heading2') {
-                handleTopToolbarAction('heading', '2');
-              }
-            }}>
-              <SelectTrigger className="w-32 h-8">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="normal">Normal Text</SelectItem>
-                <SelectItem value="heading1">Heading 1</SelectItem>
-                <SelectItem value="heading2">Heading 2</SelectItem>
-              </SelectContent>
-            </Select>
-            
-            <Select value="arial" onValueChange={(value) => {
-              const fontMap: { [key: string]: string } = {
-                'arial': 'Arial, sans-serif',
-                'times': 'Times New Roman, serif',
-                'helvetica': 'Helvetica, Arial, sans-serif',
-                'georgia': 'Georgia, serif',
-                'courier': 'Courier New, monospace'
-              };
-              handleTopToolbarAction('font-family', fontMap[value] || value);
-            }}>
-              <SelectTrigger className="w-24 h-8">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="arial">Arial</SelectItem>
-                <SelectItem value="times">Times New Roman</SelectItem>
-                <SelectItem value="helvetica">Helvetica</SelectItem>
-                <SelectItem value="georgia">Georgia</SelectItem>
-                <SelectItem value="courier">Courier New</SelectItem>
-              </SelectContent>
-            </Select>
-            
-            <Input
-              type="number"
-              defaultValue="14"
-              className="w-16 h-8 text-center"
-              onBlur={(e) => handleTopToolbarAction('font-size', e.target.value + 'px')}
-              onKeyDown={(e) => e.key === 'Enter' && handleTopToolbarAction('font-size', e.currentTarget.value + 'px')}
-            />
-          </div>
-        </div>
-      </div>
 
       {/* Main Content */}
       <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
@@ -851,9 +652,9 @@ export default function EditorPage() {
                   {isLoading && (
                     <div className="flex items-center justify-center py-2">
                       <div className="flex space-x-1">
-                        <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce"></div>
-                        <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                        <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                        <div className="w-3 h-3 rounded-full animate-bounce" style={{ backgroundColor: '#6336e8' }}></div>
+                        <div className="w-3 h-3 rounded-full animate-bounce" style={{ backgroundColor: '#6336e8', animationDelay: '0.1s' }}></div>
+                        <div className="w-3 h-3 rounded-full animate-bounce" style={{ backgroundColor: '#6336e8', animationDelay: '0.2s' }}></div>
                       </div>
                     </div>
                   )}
@@ -873,7 +674,7 @@ export default function EditorPage() {
           {/* Right Panel - Editor */}
           <div className="lg:col-span-4">
             <Card className="h-full">
-              <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+              {/* <div className="p-4 border-b border-gray-200 dark:border-gray-700">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Button
@@ -883,6 +684,218 @@ export default function EditorPage() {
                     >
                       {showPreview ? 'Hide Preview' : 'Show Preview'}
                     </Button>
+                  </div>
+                </div>
+              </div> */}
+
+              {/* Formatting Toolbar */}
+              <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-2">
+                <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-1">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8"
+                      onClick={() => handleTopToolbarAction('bold')}
+                    >
+                      <Bold className="w-4 h-4" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8"
+                      onClick={() => handleTopToolbarAction('italic')}
+                    >
+                      <Italic className="w-4 h-4" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8"
+                      onClick={() => handleTopToolbarAction('underline')}
+                    >
+                      <Underline className="w-4 h-4" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8"
+                      onClick={() => handleTopToolbarAction('strikethrough')}
+                    >
+                      <Strikethrough className="w-4 h-4" />
+                    </Button>
+                  </div>
+
+                  <div className="w-px h-6 bg-gray-300 dark:bg-gray-600" />
+
+                  <div className="flex items-center space-x-1">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8"
+                      onClick={() => handleTopToolbarAction('align-left')}
+                    >
+                      <AlignLeft className="w-4 h-4" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8"
+                      onClick={() => handleTopToolbarAction('align-center')}
+                    >
+                      <AlignCenter className="w-4 h-4" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8"
+                      onClick={() => handleTopToolbarAction('align-right')}
+                    >
+                      <AlignRight className="w-4 h-4" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8"
+                      onClick={() => handleTopToolbarAction('align-justify')}
+                    >
+                      <AlignJustify className="w-4 h-4" />
+                    </Button>
+                  </div>
+
+                  <div className="w-px h-6 bg-gray-300 dark:bg-gray-600" />
+
+                  <div className="flex items-center space-x-1">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8"
+                      onClick={() => handleTopToolbarAction('bullet-list')}
+                    >
+                      <List className="w-4 h-4" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8"
+                      onClick={() => handleTopToolbarAction('ordered-list')}
+                    >
+                      <ListOrdered className="w-4 h-4" />
+                    </Button>
+                  </div>
+
+                  <div className="w-px h-6 bg-gray-300 dark:bg-gray-600" />
+
+                  <div className="flex items-center space-x-1">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8"
+                      onClick={() => handleTopToolbarAction('link')}
+                    >
+                      <Link className="w-4 h-4" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8"
+                      onClick={() => handleTopToolbarAction('unlink')}
+                      title="Remove link"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-.758l1.102-1.101a4 4 0 00-5.656-5.656l-4 4a4 4 0 105.656 5.656l1.102-1.101" />
+                      </svg>
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8"
+                      onClick={() => handleTopToolbarAction('image')}
+                    >
+                      <Image className="w-4 h-4" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8"
+                      onClick={() => handleTopToolbarAction('table')}
+                    >
+                      <Table className="w-4 h-4" />
+                    </Button>
+                  </div>
+
+                  <div className="w-px h-6 bg-gray-300 dark:bg-gray-600" />
+
+                  <div className="flex items-center space-x-1">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8"
+                      onClick={() => handleTopToolbarAction('color')}
+                    >
+                      <Palette className="w-4 h-4" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8"
+                      onClick={() => handleTopToolbarAction('highlight')}
+                    >
+                      <Highlighter className="w-4 h-4" />
+                    </Button>
+                  </div>
+
+                  <div className="w-px h-6 bg-gray-300 dark:bg-gray-600" />
+
+                  <div className="flex items-center space-x-2">
+                    <Select value="normal" onValueChange={(value) => {
+                      if (value === 'normal') {
+                        handleTopToolbarAction('paragraph');
+                      } else if (value === 'heading1') {
+                        handleTopToolbarAction('heading', '1');
+                      } else if (value === 'heading2') {
+                        handleTopToolbarAction('heading', '2');
+                      }
+                    }}>
+                      <SelectTrigger className="w-32 h-8">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="normal">Normal Text</SelectItem>
+                        <SelectItem value="heading1">Heading 1</SelectItem>
+                        <SelectItem value="heading2">Heading 2</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    
+                    <Select value="arial" onValueChange={(value) => {
+                      const fontMap: { [key: string]: string } = {
+                        'arial': 'Arial, sans-serif',
+                        'times': 'Times New Roman, serif',
+                        'helvetica': 'Helvetica, Arial, sans-serif',
+                        'georgia': 'Georgia, serif',
+                        'courier': 'Courier New, monospace'
+                      };
+                      handleTopToolbarAction('font-family', fontMap[value] || value);
+                    }}>
+                      <SelectTrigger className="w-24 h-8">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="arial">Arial</SelectItem>
+                        <SelectItem value="times">Times New Roman</SelectItem>
+                        <SelectItem value="helvetica">Helvetica</SelectItem>
+                        <SelectItem value="georgia">Georgia</SelectItem>
+                        <SelectItem value="courier">Courier New</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    
+                    <Input
+                      type="number"
+                      defaultValue="14"
+                      className="w-16 h-8 text-center"
+                      onBlur={(e) => handleTopToolbarAction('font-size', e.target.value + 'px')}
+                      onKeyDown={(e) => e.key === 'Enter' && handleTopToolbarAction('font-size', e.currentTarget.value + 'px')}
+                    />
                   </div>
                 </div>
               </div>
