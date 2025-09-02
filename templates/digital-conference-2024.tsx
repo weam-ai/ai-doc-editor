@@ -17,34 +17,26 @@ export const digitalConference2024Template = {
 <body style="margin:0; padding:0; box-sizing:border-box; color:#333;
              background:
                linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.3)),
-               url('data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><rect width=\'100\' height=\'100\' fill=\'%23888\'/></svg>');
+               url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect width=%22100%22 height=%22100%22 fill=%22%23888%22/%3E%3C/svg%3E');
              background-size:cover; background-position:center;
-             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;">
-
+             font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;">
   <!-- page frame -->
   <div style="max-width:880px; margin:0 auto; padding:32px 80px;">
-
     <!-- two-column shell -->
     <div style="display:flex; min-height:800px; background:#fff;">
-
       <!-- left sidebar -->
       <div style="width:35%; background:#c8a882; padding:40px 30px; display:flex; flex-direction:column; gap:30px;">
         <div>
           <div style="font-weight:700; font-size:36px; color:#2c3e50; line-height:1.2; margin:0 0 5px;">
             Digital<br>Conference
           </div>
-          <div style="font-weight:700; font-size:48px; color:#2c3e50; margin:0;">
-            2024
-          </div>
+          <div style="font-weight:700; font-size:48px; color:#2c3e50; margin:0;">2024</div>
         </div>
-
         <div style="font-size:16px; color:#2c3e50; line-height:1.6;">
           <div><strong>2:00–10:00 pm</strong></div>
           <div><strong>1st December,<br>2023</strong></div>
-
           <h3 style="margin:20px 0 10px; font-size:18px; font-weight:600;">Location</h3>
           <div>123 Anywhere St.,<br>Any City,<br>ST 12345</div>
-
           <h3 style="margin:20px 0 10px; font-size:18px; font-weight:600;">Contact</h3>
           <div>
             123-456-7890<br>
@@ -53,13 +45,11 @@ export const digitalConference2024Template = {
           </div>
         </div>
       </div>
-
       <!-- right main -->
       <div style="width:65%;
                   background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.3)), #888;
                   background-size:cover; background-position:center;
                   position:relative; padding:40px; display:flex; flex-direction:column;">
-
         <!-- headline -->
         <div>
           <h1 style="margin:0 0 10px; font-weight:900; font-size:42px; color:#fff; letter-spacing:3px; line-height:1.1;">
@@ -69,13 +59,10 @@ export const digitalConference2024Template = {
             INSIGHTFUL DISCUSSION
           </div>
         </div>
-
         <!-- speakers -->
         <div style="margin:0 0 40px;">
           <h2 style="margin:0 0 20px; font-size:28px; color:#fff; font-weight:700;">Our speaker</h2>
-
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
-
             <!-- speaker card -->
             <div style="display:flex; align-items:center; gap:15px;">
               <div style="position:relative; width:60px; height:60px; border-radius:50%; overflow:hidden;">
@@ -92,7 +79,6 @@ export const digitalConference2024Template = {
                 <div style="font-size:12px; opacity:.9; line-height:1.3;">CEO &amp; Founder of<br>Lierne &amp; Co.</div>
               </div>
             </div>
-
             <!-- speaker card -->
             <div style="display:flex; align-items:center; gap:15px;">
               <div style="position:relative; width:60px; height:60px; border-radius:50%; overflow:hidden;">
@@ -109,7 +95,6 @@ export const digitalConference2024Template = {
                 <div style="font-size:12px; opacity:.9; line-height:1.3;">COO &amp; Co-Founder of<br>Areawat Industries</div>
               </div>
             </div>
-
             <!-- speaker card -->
             <div style="display:flex; align-items:center; gap:15px;">
               <div style="position:relative; width:60px; height:60px; border-radius:50%; overflow:hidden;">
@@ -126,7 +111,6 @@ export const digitalConference2024Template = {
                 <div style="font-size:12px; opacity:.9; line-height:1.3;">CEO &amp; Founder of<br>Salgore &amp; Co.</div>
               </div>
             </div>
-
             <!-- speaker card -->
             <div style="display:flex; align-items:center; gap:15px;">
               <div style="position:relative; width:60px; height:60px; border-radius:50%; overflow:hidden;">
@@ -143,10 +127,8 @@ export const digitalConference2024Template = {
                 <div style="font-size:12px; opacity:.9; line-height:1.3;">COO &amp; Co-Founder of<br>Salgore &amp; Co.</div>
               </div>
             </div>
-
           </div>
         </div>
-
         <!-- about the program -->
         <div style="background-color:rgba(200,168,130,0.9); padding:30px; margin-top:auto; color:#2c3e50;">
           <h3 style="margin:0 0 15px; font-size:24px; font-weight:700;">About the program</h3>
@@ -156,7 +138,6 @@ export const digitalConference2024Template = {
             ea commodo consequat.
           </p>
         </div>
-
       </div>
     </div>
   </div>
