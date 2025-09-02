@@ -1,6 +1,6 @@
 export const sarahJohnsonMarketingResumeTemplate = {
     _id: 'sarah-johnson-marketing-resume',
-    name: 'Sarah Johnson Marketing Resume',
+    name: 'Sarah Johnson Marketing',
     description: 'Create and edit HTML documents with inline styles',
     category: 'job-applications',
     prompt: 'Create an HTML document with inline styles',
