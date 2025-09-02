@@ -18,7 +18,9 @@ export default function HtmlEditor({ content, onChange }: HtmlEditorProps) {
 
   // Initialize htmlContent when content prop changes
   useEffect(() => {
+    console.log('HtmlEditor - useEffect triggered with content:', content?.substring(0, 100) + '...');
     if (content && content !== htmlContent) {
+      console.log('HtmlEditor - Setting htmlContent');
       setHtmlContent(content);
     }
   }, [content]);
@@ -29,21 +31,32 @@ export default function HtmlEditor({ content, onChange }: HtmlEditorProps) {
   };
 
   const extractBodyContent = (html: string) => {
+    console.log('HtmlEditor - extractBodyContent called with:', html?.substring(0, 100) + '...');
+    
+    if (!html || html.trim() === '') {
+      console.log('HtmlEditor - Empty HTML content');
+      return '<p>No content available</p>';
+    }
+    
     const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
     if (bodyMatch) {
+      console.log('HtmlEditor - Found body content');
       return bodyMatch[1];
     }
     
     const htmlMatch = html.match(/<html[^>]*>([\s\S]*)<\/html>/i);
     if (htmlMatch) {
       const headRemoved = htmlMatch[1].replace(/<head[^>]*>[\s\S]*?<\/head>/i, '');
+      console.log('HtmlEditor - Found HTML content, removed head');
       return headRemoved.trim();
     }
     
     if (html.trim().startsWith('<') && !html.includes('<!DOCTYPE')) {
+      console.log('HtmlEditor - Using HTML as-is');
       return html;
     }
     
+    console.log('HtmlEditor - Returning HTML as fallback');
     return html;
   };
 
@@ -57,10 +70,11 @@ export default function HtmlEditor({ content, onChange }: HtmlEditorProps) {
 
         <TabsContent value="preview" className="space-y-4">
           <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4">Document Preview</h3>
-            <div className="bg-white border border-gray-200 rounded-lg min-h-[500px] p-6 overflow-auto">
+            <div className="bg-white min-h-[500px] p-6 overflow-auto">
               {(() => {
+                console.log('HtmlEditor - Rendering preview with htmlContent:', htmlContent?.substring(0, 100) + '...');
                 const extractedContent = extractBodyContent(htmlContent);
+                console.log('HtmlEditor - Extracted content:', extractedContent?.substring(0, 100) + '...');
                 return (
                   <div 
                     dangerouslySetInnerHTML={{ 
@@ -90,54 +104,7 @@ export default function HtmlEditor({ content, onChange }: HtmlEditorProps) {
                   className="font-mono text-sm"
                 />
               </div>
-              <div className="flex space-x-2">
-                <Button 
-                  onClick={() => handleHtmlChange(`<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>New HTML Document</title>
-</head>
-<body>
-    <h1>New Document</h1>
-    <p>Start building your HTML document here.</p>
-</body>
-</html>`)}
-                  variant="outline"
-                >
-                  Reset to Default
-                </Button>
-                <Button 
-                  onClick={() => handleHtmlChange(`<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Styled Document</title>
-</head>
-<body style="font-family: Arial, sans-serif; margin: 40px; background-color: #f5f5f5;">
-    <div style="background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-        <h1 style="color: #333; text-align: center; margin-bottom: 30px;">Welcome to Your Document</h1>
-        <p style="color: #666; line-height: 1.6; margin-bottom: 20px;">This is a beautifully styled HTML document with inline CSS. You can customize the styles and content to match your needs.</p>
-        <div style="background: #f8f9fa; padding: 20px; border-left: 4px solid #007bff; margin: 20px 0;">
-            <h2 style="color: #007bff; margin-top: 0;">Key Features</h2>
-            <ul style="color: #555;">
-                <li>Inline CSS styling</li>
-                <li>Responsive design</li>
-                <li>Easy to customize</li>
-                <li>Professional appearance</li>
-            </ul>
-        </div>
-        <p style="color: #666; text-align: center; font-style: italic;">Edit the HTML above to see your changes in real-time!</p>
-    </div>
-</body>
-</html>`)}
-                  variant="outline"
-                >
-                  Load Styled Template
-                </Button>
-              </div>
+
             </div>
           </Card>
         </TabsContent>
