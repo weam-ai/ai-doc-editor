@@ -1,10 +1,11 @@
 const { MongoClient } = require('mongodb');
-import { MONGODB } from '../app/config/config';
-// const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/aidocs';
+const { getMongoDBUri, validateMongoDBUri } = require('../lib/mongoUri');
 
+const MONGODB_URI = getMongoDBUri();
 
-const dbConfigure = `${MONGODB.DB_USERNAME}${MONGODB.DB_PASSWORD}`;
-const MONGODB_URI = `${MONGODB.DB_CONNECTION}://${dbConfigure}${MONGODB.DB_HOST}${MONGODB.DB_PORT}/${MONGODB.DB_DATABASE}?retryWrites=true&w=majority&readPreference=nearest`;
+if (!MONGODB_URI || !validateMongoDBUri(MONGODB_URI)) {
+  throw new Error('Invalid MongoDB URI. Please check your MongoDB configuration.');
+}
 
 
 const templates = [
