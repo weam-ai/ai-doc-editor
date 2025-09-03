@@ -76,7 +76,7 @@ Create a `.env.local` file in the root directory:
 MONGODB_URI=mongodb://localhost:27017/aidocs
 
 # Iron Session
-NEXT_PUBLIC_COOKIE_NAME=weam
+NEXT_PUBLIC_COOKIE_NAME=your-cookie
 NEXT_PUBLIC_COOKIE_PASSWORD=your-secure-password-here
 
 # OpenAI
