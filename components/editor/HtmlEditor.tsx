@@ -111,6 +111,50 @@ function PreserveStyleEditor({ content, onChange }: PreserveStyleEditorProps) {
     }
   };
 
+  // Function to check if text is already formatted with a specific tag
+  const isTextFormatted = (range: Range, tagName: string): boolean => {
+    const container = range.commonAncestorContainer;
+    
+    // If the container is a text node, check its parent
+    let element = container.nodeType === Node.TEXT_NODE ? container.parentElement : container as Element;
+    
+    // Walk up the DOM tree to find if we're inside the target tag
+    while (element && element !== editorRef.current) {
+      if (element.tagName && element.tagName.toLowerCase() === tagName.toLowerCase()) {
+        return true;
+      }
+      element = element.parentElement;
+    }
+    
+    return false;
+  };
+
+  // Function to remove formatting from a range
+  const removeFormatting = (range: Range, tagName: string) => {
+    const container = range.commonAncestorContainer;
+    let element = container.nodeType === Node.TEXT_NODE ? container.parentElement : container as Element;
+    
+    // Find the formatting element
+    while (element && element !== editorRef.current) {
+      if (element.tagName && element.tagName.toLowerCase() === tagName.toLowerCase()) {
+        // Unwrap the element by moving its children to its parent
+        const parent = element.parentNode;
+        if (parent) {
+          // Move all children before the element
+          while (element.firstChild) {
+            parent.insertBefore(element.firstChild, element);
+          }
+          // Remove the empty element
+          parent.removeChild(element);
+        }
+        return true;
+      }
+      element = element.parentElement;
+    }
+    
+    return false;
+  };
+
   // Function to apply formatting using a saved range
   const applyFormattingWithRange = (format: string, savedRange: Range | null) => {
     console.log('Applying formatting with range:', format, savedRange);
@@ -142,6 +186,39 @@ function PreserveStyleEditor({ content, onChange }: PreserveStyleEditorProps) {
       selection.addRange(newRange);
     }
     
+    // Determine the tag name for the format
+    let tagName: string;
+    switch (format) {
+      case 'bold':
+        tagName = 'strong';
+        break;
+      case 'italic':
+        tagName = 'em';
+        break;
+      case 'underline':
+        tagName = 'u';
+        break;
+      case 'strikethrough':
+        tagName = 's';
+        break;
+      default:
+        return;
+    }
+
+    // Check if the text is already formatted with this tag
+    if (isTextFormatted(newRange, tagName)) {
+      console.log('Text is already formatted, removing formatting');
+      // Remove the formatting
+      if (removeFormatting(newRange, tagName)) {
+        // Trigger input event to update content
+        const inputEvent = new Event('input', { bubbles: true });
+        if (editorRef.current) {
+          editorRef.current.dispatchEvent(inputEvent);
+        }
+        return;
+      }
+    }
+
     // Create the appropriate element based on format
     let element: HTMLElement;
     switch (format) {
