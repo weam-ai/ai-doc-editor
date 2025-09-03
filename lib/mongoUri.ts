@@ -22,7 +22,7 @@ export function getMongoDBUri(directUri?: string): string {
   // Validate required fields
   if (!DB_CONNECTION || !DB_HOST || !DB_DATABASE) {
     throw new Error(
-      'MongoDB configuration is incomplete. Either provide MONGODB_URI or ensure DB_CONNECTION, DB_HOST, and DB_DATABASE are set.'
+      'MonogoDB configuration is incomplete. Either provide MONOGODB_URI or ensure DB_CONNECTION, DB_HOST, and DB_DATABASE are set.'
     );
   }
 
