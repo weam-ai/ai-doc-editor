@@ -215,6 +215,7 @@ This project is licensed under the MIT License.
 - [ ] Document versioning
 - [ ] Team workspaces
 
+
 ---
 
 Built with ❤️ using Next.js, MongoDB, and OpenAI
