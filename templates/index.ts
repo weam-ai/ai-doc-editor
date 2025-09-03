@@ -15,6 +15,18 @@ import { weeklyProgressReportTemplate } from './weekly-progress-report';
 import { digitalConference2024Template } from './digital-conference-2024';
 import { businessConferenceSalfordTemplate } from './business-conference-salford';
 import { propertymaxConstructionTemplate } from './propertymax-construction';
+import { businessProposalTemplate3 } from './business-proposal-3';
+import { dataexplain } from './data-explain';
+import { projectsolution } from './project-solution';
+import { publicspeaking } from './public-speaking';
+import { performanceanalysis } from './performance-analysis';
+import { annualreport } from './annual-report';
+import { companycasestudy } from './company-case-study'
+import { newsletter } from './newsletter';
+import { aboutus } from './about-us';
+import { newsletterissue } from './newsletter-issue';
+
+
 // Export all templates as an array
 export const allTemplates = [
   blankDocumentTemplate,
@@ -33,6 +45,15 @@ export const allTemplates = [
   marketingOnboardingTemplate,
   q2BusinessReportTemplate,
   modernStartupTemplate,
+  businessProposalTemplate3,
+  dataexplain,
+  projectsolution,
+  publicspeaking,
+  performanceanalysis,
+  annualreport,
+  companycasestudy,
+  newsletter,
+  aboutus,
+  newsletterissue
   // projectStatusTemplate
-
 ];
