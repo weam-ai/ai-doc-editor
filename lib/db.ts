@@ -1,11 +1,24 @@
 import mongoose from 'mongoose';
-import { MONGODB } from '../app/config/config';
-// const MONGODB_URI = process.env.MONGODB_URI!;
-const dbConfigure = `${MONGODB.DB_USERNAME}${MONGODB.DB_PASSWORD}`;
-const MONGODB_URI = `${MONGODB.DB_CONNECTION}://${dbConfigure}${MONGODB.DB_HOST}${MONGODB.DB_PORT}/${MONGODB.DB_DATABASE}?retryWrites=true&w=majority&readPreference=nearest`;
+import { getMongoDBUri, validateMongoDBUri } from './mongoUri';
 
-if (!MONGODB_URI) {
-  throw new Error('Please define the MONGODB_URI environment variable inside .env.local');
+// Only validate MongoDB URI at runtime, not during build time
+let MONGODB_URI: string | null = null;
+
+function getMongoDBUriSafe(): string {
+  if (!MONGODB_URI) {
+    MONGODB_URI = getMongoDBUri();
+    
+    // Skip validation during build time
+    if (process.env.NODE_ENV === 'production' && process.env.NEXT_PHASE === 'phase-production-build') {
+      return MONGODB_URI;
+    }
+    
+    if (!MONGODB_URI || !validateMongoDBUri(MONGODB_URI)) {
+      throw new Error('Invalid MongoDB URI. Please check your MongoDB configuration.');
+    }
+  }
+  
+  return MONGODB_URI;
 }
 
 let cached: {
@@ -25,7 +38,7 @@ async function dbConnect() {
 
     cached = {
       conn: null,
-      promise: mongoose.connect(MONGODB_URI, opts)
+      promise: mongoose.connect(getMongoDBUriSafe(), opts)
     };
   }
 
