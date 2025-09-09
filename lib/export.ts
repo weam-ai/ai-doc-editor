@@ -15,30 +15,44 @@ export async function exportToPDF(title: string, contentHtml: string): Promise<v
     }
   } catch (error) {
     console.error('PDF export error:', error);
-    // Fallback to basic PDF export
-    const pdf = new jsPDF();
+    // Fallback to basic PDF export with margins and compression
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4',
+      compress: true,
+      precision: 2
+    });
+    
+    const margin = 15; // 15mm margin on all sides
+    const contentWidth = 210 - (margin * 2); // 180mm content width
+    
     pdf.setFontSize(20);
-    pdf.text(title, 20, 20);
+    pdf.text(title, margin, margin + 10);
     
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = contentHtml;
     const textContent = tempDiv.textContent || tempDiv.innerText || '';
     
     pdf.setFontSize(12);
-    const splitText = pdf.splitTextToSize(textContent, 170);
-    pdf.text(splitText, 20, 40);
+    const splitText = pdf.splitTextToSize(textContent, contentWidth);
+    pdf.text(splitText, margin, margin + 30);
     
     pdf.save(`${title}.pdf`);
   }
 }
 
 async function exportHtmlToPDF(title: string, contentHtml: string): Promise<void> {
+  // Extract width from HTML content
+  const widthMatch = contentHtml.match(/max-width:\s*(\d+)px|width:\s*(\d+)px/);
+  const templateWidth = widthMatch ? parseInt(widthMatch[1] || widthMatch[2]) : 800; // Default to 800px if not found
+  
   // Create a temporary container with the exact HTML content
   const tempContainer = document.createElement('div');
   tempContainer.style.position = 'absolute';
   tempContainer.style.left = '-9999px';
   tempContainer.style.top = '0';
-  tempContainer.style.width = '900px'; // Match the template width
+  tempContainer.style.width = `${templateWidth}px`; // Use dynamic width from template
   tempContainer.style.backgroundColor = 'white';
   
   // Extract the body content from HTML if it exists
@@ -151,13 +165,13 @@ async function exportHtmlToPDF(title: string, contentHtml: string): Promise<void
   // Add to DOM temporarily
   document.body.appendChild(tempContainer);
   
-  // Convert to canvas with high quality
+  // Convert to canvas with optimized settings for compression
   const canvas = await html2canvas(tempContainer, {
-    scale: 2, // Higher resolution
+    scale: 1.5, // Reduced scale for smaller file size while maintaining quality
     useCORS: true,
     allowTaint: true,
     backgroundColor: '#ffffff',
-    width: 900,
+    width: templateWidth, // Use dynamic width from template
     height: tempContainer.scrollHeight,
     scrollX: 0,
     scrollY: 0,
@@ -167,46 +181,57 @@ async function exportHtmlToPDF(title: string, contentHtml: string): Promise<void
   // Remove temporary container
   document.body.removeChild(tempContainer);
   
-  // Calculate PDF dimensions with proper spacing
-  const imgWidth = 210; // A4 width in mm
-  const pageHeight = 295; // A4 height in mm
-  const imgHeight = (canvas.height * imgWidth) / canvas.width;
+  // PDF dimensions with margins
+  const pageWidth = 210; // A4 width in mm
+  const pageHeight = 297; // A4 height in mm
+  const margin = 15; // 15mm margin on all sides
+  const contentWidth = pageWidth - (margin * 2); // 180mm content width
+  const contentHeight = pageHeight - (margin * 2); // 267mm content height
+  
+  // Calculate image dimensions to fit within margins
+  const imgWidth = contentWidth;
+  const imgHeight = (canvas.height * contentWidth) / canvas.width;
   let heightLeft = imgHeight;
   
-  // Create PDF
-  const pdf = new jsPDF('p', 'mm', 'a4');
+  // Create PDF with compression
+  const pdf = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+    compress: true, // Enable compression
+    precision: 2 // Reduce precision for smaller file size
+  });
+  
   let position = 0;
   
-  // Add first page
-  pdf.addImage(canvas, 'PNG', 0, position, imgWidth, imgHeight);
-  heightLeft -= pageHeight;
+  // Add first page with margins
+  pdf.addImage(canvas, 'JPEG', margin, margin + position, imgWidth, imgHeight, undefined, 'FAST');
+  heightLeft -= contentHeight;
   
   // Add additional pages if content is longer than one page
   while (heightLeft >= 0) {
     position = heightLeft - imgHeight;
     pdf.addPage();
     
-    // Add a small margin at the top of new pages for better spacing
-    if (heightLeft > pageHeight) {
-      // Add some white space at the top of new pages
-      pdf.setFillColor(255, 255, 255);
-      pdf.rect(0, 0, imgWidth, 10, 'F');
-    }
-    
-    pdf.addImage(canvas, 'PNG', 0, position, imgWidth, imgHeight);
-    heightLeft -= pageHeight;
+    // Add content with proper margins
+    pdf.addImage(canvas, 'JPEG', margin, margin + position, imgWidth, imgHeight, undefined, 'FAST');
+    heightLeft -= contentHeight;
   }
   
   pdf.save(`${title}.pdf`);
 }
 
 async function exportMarkdownToPDF(title: string, contentHtml: string): Promise<void> {
+  // Extract width from HTML content if it exists
+  const widthMatch = contentHtml.match(/max-width:\s*(\d+)px|width:\s*(\d+)px/);
+  const templateWidth = widthMatch ? parseInt(widthMatch[1] || widthMatch[2]) : 800; // Default to 800px if not found
+  
   // Create a temporary container with proper styling
   const tempContainer = document.createElement('div');
   tempContainer.style.position = 'absolute';
   tempContainer.style.left = '-9999px';
   tempContainer.style.top = '0';
-  tempContainer.style.width = '800px'; // Fixed width for consistent layout
+  tempContainer.style.width = `${templateWidth}px`; // Use dynamic width from template
   tempContainer.style.padding = '40px';
   tempContainer.style.backgroundColor = 'white';
   tempContainer.style.fontFamily = 'Arial, sans-serif';
@@ -328,13 +353,13 @@ async function exportMarkdownToPDF(title: string, contentHtml: string): Promise<
   // Add to DOM temporarily
   document.body.appendChild(tempContainer);
   
-  // Convert to canvas with high quality
+  // Convert to canvas with optimized settings for compression
   const canvas = await html2canvas(tempContainer, {
-    scale: 2, // Higher resolution
+    scale: 1.5, // Reduced scale for smaller file size while maintaining quality
     useCORS: true,
     allowTaint: true,
     backgroundColor: '#ffffff',
-    width: 800,
+    width: templateWidth, // Use dynamic width from template
     height: tempContainer.scrollHeight,
     scrollX: 0,
     scrollY: 0
@@ -343,34 +368,41 @@ async function exportMarkdownToPDF(title: string, contentHtml: string): Promise<
   // Remove temporary container
   document.body.removeChild(tempContainer);
   
-  // Calculate PDF dimensions with proper spacing
-  const imgWidth = 210; // A4 width in mm
-  const pageHeight = 295; // A4 height in mm
-  const imgHeight = (canvas.height * imgWidth) / canvas.width;
+  // PDF dimensions with margins
+  const pageWidth = 210; // A4 width in mm
+  const pageHeight = 297; // A4 height in mm
+  const margin = 15; // 15mm margin on all sides
+  const contentWidth = pageWidth - (margin * 2); // 180mm content width
+  const contentHeight = pageHeight - (margin * 2); // 267mm content height
+  
+  // Calculate image dimensions to fit within margins
+  const imgWidth = contentWidth;
+  const imgHeight = (canvas.height * contentWidth) / canvas.width;
   let heightLeft = imgHeight;
   
-  // Create PDF
-  const pdf = new jsPDF('p', 'mm', 'a4');
+  // Create PDF with compression
+  const pdf = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+    compress: true, // Enable compression
+    precision: 2 // Reduce precision for smaller file size
+  });
+  
   let position = 0;
   
-  // Add first page
-  pdf.addImage(canvas, 'PNG', 0, position, imgWidth, imgHeight);
-  heightLeft -= pageHeight;
+  // Add first page with margins
+  pdf.addImage(canvas, 'JPEG', margin, margin + position, imgWidth, imgHeight, undefined, 'FAST');
+  heightLeft -= contentHeight;
   
   // Add additional pages if content is longer than one page
   while (heightLeft >= 0) {
     position = heightLeft - imgHeight;
     pdf.addPage();
     
-    // Add a small margin at the top of new pages for better spacing
-    if (heightLeft > pageHeight) {
-      // Add some white space at the top of new pages
-      pdf.setFillColor(255, 255, 255);
-      pdf.rect(0, 0, imgWidth, 10, 'F');
-    }
-    
-    pdf.addImage(canvas, 'PNG', 0, position, imgWidth, imgHeight);
-    heightLeft -= pageHeight;
+    // Add content with proper margins
+    pdf.addImage(canvas, 'JPEG', margin, margin + position, imgWidth, imgHeight, undefined, 'FAST');
+    heightLeft -= contentHeight;
   }
   
   pdf.save(`${title}.pdf`);
@@ -395,6 +427,10 @@ export async function exportToWord(title: string, contentHtml: string): Promise<
 }
 
 function exportHtmlToWord(title: string, contentHtml: string): void {
+  // Extract width from HTML content
+  const widthMatch = contentHtml.match(/max-width:\s*(\d+)px|width:\s*(\d+)px/);
+  const templateWidth = widthMatch ? parseInt(widthMatch[1] || widthMatch[2]) : 800; // Default to 800px if not found
+  
   // Extract the body content from HTML if it exists
   let htmlContent = contentHtml;
   if (contentHtml.includes('<body')) {
@@ -713,6 +749,10 @@ export function exportToHTML(title: string, contentHtml: string): void {
 }
 
 function exportHtmlToHTML(title: string, contentHtml: string): void {
+  // Extract width from HTML content
+  const widthMatch = contentHtml.match(/max-width:\s*(\d+)px|width:\s*(\d+)px/);
+  const templateWidth = widthMatch ? parseInt(widthMatch[1] || widthMatch[2]) : 800; // Default to 800px if not found
+  
   // Extract the body content from HTML if it exists
   let htmlContent = contentHtml;
   if (contentHtml.includes('<body')) {
@@ -740,9 +780,10 @@ function exportHtmlToHTML(title: string, contentHtml: string): void {
           background-color: #ffffff;
         }
         
-        /* Include the HTML preview styles from globals.css */
         .html-preview {
-          width: 100%;
+          max-width: ${templateWidth}px;
+          margin: 0 auto;
+          padding: 0 20px;
         }
         
         .html-preview h1,
