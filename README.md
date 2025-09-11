@@ -63,25 +63,51 @@ git clone <repository-url>
 cd aidocs
 ```
 
-### 2. Install Dependencies
+### 2. Install & Run (from project root)
+You can install and run everything from the root folder (no need to install/run separately for client and server):
+
 ```bash
 npm install
+npm run dev
 ```
 
 ### 3. Environment Configuration
-Create a `.env.local` file in the root directory:
 
+Set up two environment files:
+
+1) Root `.env` (for shared/dev config)
 ```env
-# Database
-MONGODB_URI=mongodb://localhost:27017/aidocs
-
-# Iron Session
-NEXT_PUBLIC_COOKIE_NAME=your-cookie
-NEXT_PUBLIC_COOKIE_PASSWORD=your-secure-password-here
-
-# OpenAI
-OPENAI_API_KEY=your-openai-api-key
+PORT=3001
+NODE_ENV=development
+NEXT_PUBLIC_API_BASE_PATH=/ai-video
 ```
+
+2) AI-VideoGen `AI-VideoGen/config.env` (video studio server + providers)
+```env
+# Required cookies
+WEAM_COOKIE_NAME=weam
+WEAM_COOKIE_PASSWORD=replace-with-32-characters-min
+
+# Server
+PORT=3004
+NODE_ENV=development
+CLIENT_ORIGIN=http://localhost:3001
+
+# Providers (green dot in dropdown when set)
+RUNWAY_API_KEY=
+BANANA_API_KEY=
+VEO3_API_KEY=
+
+# Database
+MONGODB_URI=mongodb://localhost:27017/ai-videogen
+
+# Gemini (chat prompt analysis)
+GEMINI_API_KEY=
+```
+
+Notes:
+- The video model dropdown shows availability dots based on provider keys: `RUNWAY_API_KEY`, `BANANA_API_KEY`, `VEO3_API_KEY`.
+- You can override database with your own Atlas URI.
 
 ### 4. Iron Session Setup
 1. Generate a secure password for cookie encryption
@@ -102,11 +128,13 @@ OPENAI_API_KEY=your-openai-api-key
    ```
 
 ### 7. Run the Application
+From the project root:
 ```bash
 npm run dev
 ```
 
-Visit `http://localhost:3000` to see your AI Docs application!
+- AI Docs: `http://localhost:3000`
+- AI Video Studio: `http://localhost:3001/ai-video`
 
 ## 📁 Project Structure
 
