@@ -23,7 +23,7 @@ export function SessionValidator({ children }: SessionValidatorProps) {
         }
 
         // Check if we have session cookies or localStorage data
-        const hasSessionCookie = document.cookie.includes('weam='); // Based on your cookie name
+        const hasSessionCookie = document.cookie.includes('weam'); // Based on your cookie name
         
         if (hasSessionCookie) {
           setHasSession(true);
