@@ -22,3 +22,21 @@ export function truncateText(text: string, length: number) {
 export function generateId() {
   return Math.random().toString(36).substr(2, 9);
 }
+
+export function getHostnameFromRequest(request:any) {
+  try {
+    const host = request.headers.get('x-forwarded-host') || request.headers.get('host');
+    if (!host) {
+      return null;
+    }
+
+    // Determine protocol
+    const proto = request.headers.get('x-forwarded-proto') 
+      || (request.url?.startsWith('https://') ? 'https' : 'http');
+
+    return `${proto}://${host}`;
+  } catch (error) {
+    console.error('Error getting hostname from request:', error);
+    return null;
+  }
+}
