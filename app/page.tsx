@@ -233,20 +233,6 @@ export default function Dashboard() {
           
           {/* Your Saved Documents Section */}
           <div className="space-y-3">
-            <Button 
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                const currentUrl = window.location.href;
-                const url = new URL(currentUrl);
-                const mainDomain = `${url.protocol}//${url.hostname}${url.port ? ':' + url.port : ''}`;
-                window.location.href = mainDomain;
-              }}
-              className="w-full text-xs"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to App
-            </Button>
             <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
               Your Saved Documents
             </h3>
@@ -307,7 +293,23 @@ export default function Dashboard() {
 
       {/* Main Content */}
       <div className="flex-1 p-8">
-
+        {/* Header with Back to App button */}
+        <div className="flex justify-end mb-6">
+          <Button 
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const currentUrl = window.location.href;
+              const url = new URL(currentUrl);
+              const mainDomain = `${url.protocol}//${url.hostname}${url.port ? ':' + url.port : ''}`;
+              window.location.href = mainDomain;
+            }}
+            className="text-xs"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to App
+          </Button>
+        </div>
 
         {/* Template Categories */}
         <div className="max-w-6xl mx-auto">
