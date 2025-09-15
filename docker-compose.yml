@@ -14,7 +14,7 @@ services:
     restart: unless-stopped
     container_name: ai-doc-editor-container
     networks:
-      - weamai_app-network
+      - weam_app-network
 networks:
-  weamai_app-network:
+  weam_app-network:
     external: true
