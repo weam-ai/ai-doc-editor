@@ -25,11 +25,83 @@ interface PreserveStyleEditorProps {
   onChange: (content: string) => void;
 }
 
+interface ColorPickerProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSelectColor: (color: string) => void;
+  type: 'text' | 'background';
+}
+
+// Color picker component
+function ColorPicker({ isOpen, onClose, onSelectColor, type }: ColorPickerProps) {
+  const colors = [
+    '#000000', '#404040', '#808080', '#C0C0C0', '#E0E0E0', '#FFFFFF',
+    '#FFFFE0', '#FFE4E1', '#FFB6C1', '#E6E6FA', '#E0F6FF', '#F0FFF0',
+    '#FFFF00', '#FFA500', '#FF0000', '#800080', '#0000FF', '#008000',
+    '#808000', '#8B4513', '#8B0000', '#4B0082', '#000080', '#006400'
+  ];
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+      <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold">
+            {type === 'text' ? 'Text Color' : 'Background Color'}
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700 text-xl"
+          >
+            ×
+          </button>
+        </div>
+        
+        <div className="grid grid-cols-6 gap-2 mb-4">
+          {colors.map((color) => (
+            <button
+              key={color}
+              onClick={() => {
+                onSelectColor(color);
+                onClose();
+              }}
+              className="w-10 h-10 rounded border-2 border-gray-200 hover:border-gray-400 transition-colors"
+              style={{ backgroundColor: color }}
+              title={color}
+            />
+          ))}
+        </div>
+        
+        <div className="flex gap-2">
+          <input
+            type="color"
+            onChange={(e) => {
+              onSelectColor(e.target.value);
+              onClose();
+            }}
+            className="flex-1 h-10 border border-gray-300 rounded cursor-pointer"
+          />
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Simple contentEditable editor that preserves all inline styles perfectly
 function PreserveStyleEditor({ content, onChange }: PreserveStyleEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const [isEditing, setIsEditing] = useState(false);
   const debounceTimeoutRef = useRef<NodeJS.Timeout>();
+  const [colorPickerOpen, setColorPickerOpen] = useState(false);
+  const [colorPickerType, setColorPickerType] = useState<'text' | 'background'>('text');
+  const [pendingRange, setPendingRange] = useState<Range | null>(null);
   
   // Set initial content when component mounts or content prop changes from external source
   useEffect(() => {
@@ -627,54 +699,168 @@ function PreserveStyleEditor({ content, onChange }: PreserveStyleEditorProps) {
   const applyColor = (savedRange: Range | null) => {
     if (!savedRange || savedRange.collapsed) return;
     
-    const color = prompt('Enter color (e.g., #ff0000 or red):');
-    if (!color) return;
+    setPendingRange(savedRange);
+    setColorPickerType('text');
+    setColorPickerOpen(true);
+  };
+
+  // Function to handle color selection
+  const handleColorSelection = (color: string) => {
+    if (!pendingRange) {
+      console.warn('No pending range for color selection');
+      return;
+    }
+    
+    if (!color || typeof color !== 'string') {
+      console.warn('Invalid color value:', color);
+      return;
+    }
     
     if (editorRef.current) {
       editorRef.current.focus();
     }
     
-    const newRange = document.createRange();
-    newRange.setStart(savedRange.startContainer, savedRange.startOffset);
-    newRange.setEnd(savedRange.endContainer, savedRange.endOffset);
-    
-    const selection = window.getSelection();
-    if (selection) {
-      selection.removeAllRanges();
-      selection.addRange(newRange);
+    try {
+      // First, let's try to get a better range by using the current selection
+      const currentSelection = window.getSelection();
+      let workingRange = null;
+      
+      if (currentSelection && currentSelection.rangeCount > 0) {
+        const currentRange = currentSelection.getRangeAt(0);
+        if (!currentRange.collapsed && editorRef.current && editorRef.current.contains(currentRange.commonAncestorContainer)) {
+          workingRange = currentRange.cloneRange();
+          console.log('Using current selection range:', workingRange.toString());
+        }
+      }
+      
+      // If no current selection, use the pending range
+      if (!workingRange) {
+        workingRange = document.createRange();
+        workingRange.setStart(pendingRange.startContainer, pendingRange.startOffset);
+        workingRange.setEnd(pendingRange.endContainer, pendingRange.endOffset);
+        console.log('Using pending range:', workingRange.toString());
+      }
+      
+      // Debug: Check the range content before extraction
+      console.log('Range content before extraction:', workingRange.toString());
+      console.log('Range start container:', workingRange.startContainer);
+      console.log('Range end container:', workingRange.endContainer);
+      console.log('Range collapsed:', workingRange.collapsed);
+      
+      // If range is collapsed or empty, try to find the text in the editor
+      if (workingRange.collapsed || !workingRange.toString().trim()) {
+        console.log('Range is collapsed or empty, trying to find text in editor');
+        const editorText = editorRef.current?.textContent || '';
+        const selectedText = lastSelectedTextRef.current;
+        
+        if (selectedText && editorText.includes(selectedText)) {
+          // Try to find and select the text
+          const foundRange = findAndSelectText(selectedText);
+          if (foundRange) {
+            workingRange = foundRange;
+            console.log('Found text with fallback:', workingRange.toString());
+          }
+        }
+      }
+      
+      // If still no valid range, return
+      if (workingRange.collapsed || !workingRange.toString().trim()) {
+        console.log('No valid range found for color application');
+        return;
+      }
+      
+      const selection = window.getSelection();
+      if (selection) {
+        selection.removeAllRanges();
+        selection.addRange(workingRange);
+      }
+      
+      const span = document.createElement('span');
+      if (colorPickerType === 'text') {
+        span.style.color = color;
+      } else {
+        span.style.backgroundColor = color;
+      }
+      
+      // Debug: Check span before adding content
+      console.log('Created span:', span.outerHTML);
+      
+      // Try using surroundContents which is designed for wrapping selected content
+      try {
+        workingRange.surroundContents(span);
+        console.log('Successfully surrounded contents with span:', span.outerHTML);
+      } catch (surroundError) {
+        console.log('surroundContents failed, trying alternative method:', surroundError);
+        
+        // Alternative method: Use execCommand for color
+        try {
+          // First, ensure the range is selected
+          const selection = window.getSelection();
+          if (selection) {
+            selection.removeAllRanges();
+            selection.addRange(workingRange);
+          }
+          
+          // Use execCommand to apply color
+          if (colorPickerType === 'text') {
+            document.execCommand('foreColor', false, color);
+          } else {
+            document.execCommand('backColor', false, color);
+          }
+          
+          console.log('Applied color using execCommand');
+        } catch (execError) {
+          console.log('execCommand failed, falling back to extractContents:', execError);
+          
+          // Final fallback to extractContents method
+          const contents = workingRange.extractContents();
+          console.log('Extracted contents:', contents);
+          console.log('Extracted contents text:', contents.textContent);
+          
+          span.appendChild(contents);
+          console.log('Span after adding contents:', span.outerHTML);
+          
+          workingRange.insertNode(span);
+          console.log('Span inserted into range');
+        }
+      }
+      
+      // Clear the selection after applying color
+      if (selection) {
+        selection.removeAllRanges();
+      }
+      
+      // Trigger content update to notify parent component
+      if (editorRef.current) {
+        const newContent = editorRef.current.innerHTML;
+        onChange(newContent);
+        console.log('Color applied successfully:', colorPickerType, color);
+        
+        // Debug: Check the actual DOM structure
+        console.log('Updated content HTML:', newContent);
+        
+        // Debug: Check if the span with color was actually created
+        const spans = editorRef.current.querySelectorAll('span[style*="color"], span[style*="background-color"]');
+        console.log('Found colored spans:', spans.length);
+        spans.forEach((span, index) => {
+          console.log(`Span ${index}:`, span.outerHTML);
+        });
+      }
+      
+    } catch (error) {
+      console.error('Error applying color:', error);
+    } finally {
+      setPendingRange(null);
     }
-    
-    const span = document.createElement('span');
-    span.style.color = color;
-    span.appendChild(newRange.extractContents());
-    newRange.insertNode(span);
   };
 
   // Function to apply text highlight
   const applyHighlight = (savedRange: Range | null) => {
     if (!savedRange || savedRange.collapsed) return;
     
-    const highlightColor = prompt('Enter highlight color (e.g., #ffff00 or yellow):');
-    if (!highlightColor) return;
-    
-    if (editorRef.current) {
-      editorRef.current.focus();
-    }
-    
-    const newRange = document.createRange();
-    newRange.setStart(savedRange.startContainer, savedRange.startOffset);
-    newRange.setEnd(savedRange.endContainer, savedRange.endOffset);
-    
-    const selection = window.getSelection();
-    if (selection) {
-      selection.removeAllRanges();
-      selection.addRange(newRange);
-    }
-    
-    const span = document.createElement('span');
-    span.style.backgroundColor = highlightColor;
-    span.appendChild(newRange.extractContents());
-    newRange.insertNode(span);
+    setPendingRange(savedRange);
+    setColorPickerType('background');
+    setColorPickerOpen(true);
   };
 
   // Function to apply font size
@@ -1048,6 +1234,15 @@ function PreserveStyleEditor({ content, onChange }: PreserveStyleEditorProps) {
   
   return (
     <div className="preserve-styles-editor">
+      <ColorPicker
+        isOpen={colorPickerOpen}
+        onClose={() => {
+          setColorPickerOpen(false);
+          setPendingRange(null);
+        }}
+        onSelectColor={handleColorSelection}
+        type={colorPickerType}
+      />
       <style>
         {`
           .preserve-styles-editor {
@@ -1076,6 +1271,15 @@ function PreserveStyleEditor({ content, onChange }: PreserveStyleEditorProps) {
           /* Let inline styles override everything */
           .editable-content *[style] {
             /* Inline styles automatically have higher specificity */
+          }
+          
+          /* Ensure color styles are not overridden - inline styles should take precedence */
+          .editable-content span[style*="color"] {
+            /* Let inline color styles take precedence */
+          }
+          
+          .editable-content span[style*="background-color"] {
+            /* Let inline background-color styles take precedence */
           }
           
           /* Ensure formatting commands work properly */
