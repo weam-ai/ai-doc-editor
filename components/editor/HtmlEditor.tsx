@@ -1462,7 +1462,7 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
             text-decoration: line-through;
           }
           
-          .editable-content h1, .editable-content h2, .editable-content h3 {
+          .editable-content h1, .editable-content h2, .editable-content h3, .editable-content h4, .editable-content h5, .editable-content h6 {
             font-weight: bold;
             margin: 1em 0 0.5em 0;
           }
@@ -1470,6 +1470,9 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
           .editable-content h1 { font-size: 2em; }
           .editable-content h2 { font-size: 1.5em; }
           .editable-content h3 { font-size: 1.2em; }
+          .editable-content h4 { font-size: 1.1em; }
+          .editable-content h5 { font-size: 1em; }
+          .editable-content h6 { font-size: 0.9em; }
           
           .editable-content ul, .editable-content ol {
             margin: 1em 0;

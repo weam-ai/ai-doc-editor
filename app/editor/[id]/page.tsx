@@ -928,6 +928,14 @@ export default function EditorPage() {
                         handleTopToolbarAction('heading', '1');
                       } else if (value === 'heading2') {
                         handleTopToolbarAction('heading', '2');
+                      } else if (value === 'heading3') {
+                        handleTopToolbarAction('heading', '3');
+                      } else if (value === 'heading4') {
+                        handleTopToolbarAction('heading', '4');
+                      } else if (value === 'heading5') {
+                        handleTopToolbarAction('heading', '5');
+                      } else if (value === 'heading6') {
+                        handleTopToolbarAction('heading', '6');
                       }
                     }}>
                       <SelectTrigger className="w-32 h-8">
@@ -937,6 +945,10 @@ export default function EditorPage() {
                         <SelectItem value="normal">Normal Text</SelectItem>
                         <SelectItem value="heading1">Heading 1</SelectItem>
                         <SelectItem value="heading2">Heading 2</SelectItem>
+                        <SelectItem value="heading3">Heading 3</SelectItem>
+                        <SelectItem value="heading4">Heading 4</SelectItem>
+                        <SelectItem value="heading5">Heading 5</SelectItem>
+                        <SelectItem value="heading6">Heading 6</SelectItem>
                       </SelectContent>
                     </Select>
                     
