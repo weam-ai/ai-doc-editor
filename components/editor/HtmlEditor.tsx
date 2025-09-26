@@ -313,33 +313,62 @@ function PreserveStyleEditor({ content, onChange }: PreserveStyleEditorProps) {
       }
     }
   
-    textNodes.forEach((textNode) => {
+    // Check if all selected text is already wrapped with the same tag
+    let allTextAlreadyWrapped = true;
+    for (const textNode of textNodes) {
       const parent = textNode.parentNode as HTMLElement;
-      if (parent.nodeName.toLowerCase() === tagName) return;
-  
-      const startOffset = textNode === range.startContainer ? range.startOffset : 0;
-      const endOffset = textNode === range.endContainer ? range.endOffset : textNode.textContent!.length;
-  
-      if (startOffset === 0 && endOffset === textNode.textContent!.length) {
-        const wrapper = document.createElement(tagName);
-        parent.replaceChild(wrapper, textNode);
-        wrapper.appendChild(textNode);
-      } else {
-        const before = textNode.textContent!.slice(0, startOffset);
-        const selected = textNode.textContent!.slice(startOffset, endOffset);
-        const after = textNode.textContent!.slice(endOffset);
-  
-        if (before) parent.insertBefore(document.createTextNode(before), textNode);
-  
-        const wrapper = document.createElement(tagName);
-        wrapper.appendChild(document.createTextNode(selected));
-        parent.insertBefore(wrapper, textNode);
-  
-        if (after) parent.insertBefore(document.createTextNode(after), textNode);
-  
-        parent.removeChild(textNode);
+      if (parent.nodeName.toLowerCase() !== tagName) {
+        allTextAlreadyWrapped = false;
+        break;
       }
-    });
+    }
+
+    if (allTextAlreadyWrapped && textNodes.length > 0) {
+      // Remove formatting - unwrap all the selected text
+      textNodes.forEach((textNode) => {
+        const parent = textNode.parentNode as HTMLElement;
+        if (parent.nodeName.toLowerCase() === tagName) {
+          const grandParent = parent.parentNode;
+          if (grandParent) {
+            // Move all children of the wrapper to its parent
+            while (parent.firstChild) {
+              grandParent.insertBefore(parent.firstChild, parent);
+            }
+            // Remove the empty wrapper
+            grandParent.removeChild(parent);
+          }
+        }
+      });
+    } else {
+      // Apply formatting - wrap the selected text
+      textNodes.forEach((textNode) => {
+        const parent = textNode.parentNode as HTMLElement;
+        if (parent.nodeName.toLowerCase() === tagName) return;
+  
+        const startOffset = textNode === range.startContainer ? range.startOffset : 0;
+        const endOffset = textNode === range.endContainer ? range.endOffset : textNode.textContent!.length;
+  
+        if (startOffset === 0 && endOffset === textNode.textContent!.length) {
+          const wrapper = document.createElement(tagName);
+          parent.replaceChild(wrapper, textNode);
+          wrapper.appendChild(textNode);
+        } else {
+          const before = textNode.textContent!.slice(0, startOffset);
+          const selected = textNode.textContent!.slice(startOffset, endOffset);
+          const after = textNode.textContent!.slice(endOffset);
+  
+          if (before) parent.insertBefore(document.createTextNode(before), textNode);
+  
+          const wrapper = document.createElement(tagName);
+          wrapper.appendChild(document.createTextNode(selected));
+          parent.insertBefore(wrapper, textNode);
+  
+          if (after) parent.insertBefore(document.createTextNode(after), textNode);
+  
+          parent.removeChild(textNode);
+        }
+      });
+    }
   
     // Restore cursor - find the last created wrapper element
     if (textNodes.length > 0) {
