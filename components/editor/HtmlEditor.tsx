@@ -19,12 +19,14 @@ interface HtmlEditorProps {
   content: string;
   onChange: (content: string) => void;
   editorRef?: React.RefObject<HTMLDivElement>;
+  onFontFamilyChange?: (fontFamily: string | null) => void;
 }
 
 interface PreserveStyleEditorProps {
   content: string;
   onChange: (content: string) => void;
   editorRef?: React.RefObject<HTMLDivElement>;
+  onFontFamilyChange?: (fontFamily: string | null) => void;
 }
 
 interface ColorPickerProps {
@@ -97,7 +99,7 @@ function ColorPicker({ isOpen, onClose, onSelectColor, type }: ColorPickerProps)
 }
 
 // Simple contentEditable editor that preserves all inline styles perfectly
-function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef }: PreserveStyleEditorProps) {
+function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, onFontFamilyChange }: PreserveStyleEditorProps) {
   const internalEditorRef = useRef<HTMLDivElement>(null);
   const editorRef = externalEditorRef || internalEditorRef;
   const [isEditing, setIsEditing] = useState(false);
@@ -483,13 +485,26 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef }
           lastSelectionRef.current = range.cloneRange();
           lastSelectedTextRef.current = range.toString();
           console.log('Stored selection:', range.toString(), 'Collapsed:', range.collapsed);
+          
+          // Check for font family changes and notify parent
+          if (onFontFamilyChange) {
+            if (!range.collapsed) {
+              const currentFontFamily = getCurrentFontFamily();
+              console.log('Selection change - font family detected:', currentFontFamily);
+              onFontFamilyChange(currentFontFamily);
+            } else {
+              // No text selected, reset font family
+              console.log('Selection change - no text selected, resetting font family');
+              onFontFamilyChange(null);
+            }
+          }
         }
       }
     };
 
     document.addEventListener('selectionchange', handleSelectionChange);
     return () => document.removeEventListener('selectionchange', handleSelectionChange);
-  }, []);
+  }, [onFontFamilyChange]);
 
   // Function to apply text alignment
   const applyAlignment = (alignment: string, savedRange: Range | null) => {
@@ -892,6 +907,53 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef }
     }
   };
 
+  // Function to get current font family of selected text
+  const getCurrentFontFamily = (): string | null => {
+    if (!editorRef.current) return null;
+    
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return null;
+    
+    const range = selection.getRangeAt(0);
+    if (range.collapsed) return null;
+    
+    // Find the first text node in the selection
+    const walker = document.createTreeWalker(editorRef.current, NodeFilter.SHOW_TEXT, null);
+    const textNodes: Text[] = [];
+    
+    while (walker.nextNode()) {
+      const node = walker.currentNode as Text;
+      if (!node.textContent || node.textContent.trim() === '') continue;
+      
+      const nodeRange = document.createRange();
+      nodeRange.selectNodeContents(node);
+      
+      const startComparison = range.compareBoundaryPoints(Range.START_TO_END, nodeRange);
+      const endComparison = range.compareBoundaryPoints(Range.END_TO_START, nodeRange);
+      
+      if (startComparison > 0 && endComparison < 0) {
+        textNodes.push(node);
+        break; // Get the first text node
+      }
+    }
+    
+    if (textNodes.length === 0) return null;
+    
+    // Check the parent elements for font-family style
+    let element = textNodes[0].parentElement;
+    while (element && element !== editorRef.current) {
+      if (element.style.fontFamily) {
+        const fontFamily = element.style.fontFamily;
+        console.log('Found font family:', fontFamily);
+        return fontFamily;
+      }
+      element = element.parentElement;
+    }
+    
+    console.log('No font family found for selected text');
+    return null;
+  };
+
   // Function to apply font family
   const applyFontFamily = (value: string | undefined, savedRange: Range | null) => {
     if (!value) return;
@@ -979,6 +1041,12 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef }
             parent.replaceChild(span, textNode);
           }
         });
+      }
+      
+      // Notify parent of font family change
+      if (onFontFamilyChange) {
+        console.log('Applying font family:', value);
+        onFontFamilyChange(value);
       }
     }
   };
@@ -1441,7 +1509,7 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef }
   );
 }
 
-export default function HtmlEditor({ content, onChange, editorRef }: HtmlEditorProps) {
+export default function HtmlEditor({ content, onChange, editorRef, onFontFamilyChange }: HtmlEditorProps) {
   const [htmlContent, setHtmlContent] = useState(content || '');
   const [activeTab, setActiveTab] = useState('preview');
   const isUpdatingFromPreview = useRef(false);
@@ -1597,6 +1665,7 @@ export default function HtmlEditor({ content, onChange, editorRef }: HtmlEditorP
                 content={extractBodyContent(htmlContent)}
                 onChange={handlePreviewChange}
                 editorRef={editorRef}
+                onFontFamilyChange={onFontFamilyChange}
               />
             </div>
           </Card>

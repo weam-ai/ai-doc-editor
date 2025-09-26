@@ -78,6 +78,13 @@ export default function EditorPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isReloading, setIsReloading] = useState(false);
   const [downloadFormat, setDownloadFormat] = useState<string>('');
+  const [currentFontFamily, setCurrentFontFamily] = useState<string | null>(null);
+  
+  // Debug font family changes
+  const handleFontFamilyChange = (fontFamily: string | null) => {
+    console.log('Font family changed to:', fontFamily);
+    setCurrentFontFamily(fontFamily);
+  };
   
   // Ref for the HTML editor
   const htmlEditorRef = useRef<HTMLDivElement>(null);
@@ -85,6 +92,64 @@ export default function EditorPage() {
   // Use refs to preserve content during save operations
   const contentRef = useRef(content);
   const contentHtmlRef = useRef(contentHtml);
+  
+  // Font family mapping
+  const fontMap: { [key: string]: string } = {
+    'arial': 'Arial, sans-serif',
+    'times': 'Times New Roman, serif',
+    'helvetica': 'Helvetica, Arial, sans-serif',
+    'georgia': 'Georgia, serif',
+    'courier': 'Courier New, monospace'
+  };
+  
+  // Reverse font family mapping
+  const reverseFontMap: { [key: string]: string } = {
+    'Arial, sans-serif': 'arial',
+    '"Arial", sans-serif': 'arial',
+    'Times New Roman, serif': 'times',
+    '"Times New Roman", serif': 'times',
+    'Helvetica, Arial, sans-serif': 'helvetica',
+    '"Helvetica", Arial, sans-serif': 'helvetica',
+    'Georgia, serif': 'georgia',
+    '"Georgia", serif': 'georgia',
+    'Courier New, monospace': 'courier',
+    '"Courier New", monospace': 'courier'
+  };
+  
+  // Get current font family selector value
+  const getCurrentFontFamilyValue = (): string => {
+    if (!currentFontFamily) {
+      console.log('No current font family set');
+      return '';
+    }
+    
+    console.log('Current font family:', currentFontFamily);
+    
+    // First try exact match
+    let mappedValue = reverseFontMap[currentFontFamily];
+    if (mappedValue) {
+      console.log('Exact match found:', mappedValue);
+      return mappedValue;
+    }
+    
+    // Try to match by extracting the first font name
+    const fontFamily = currentFontFamily.replace(/['"]/g, ''); // Remove quotes
+    const firstFont = fontFamily.split(',')[0].trim();
+    console.log('First font name:', firstFont);
+    
+    // Map based on first font name
+    const fontNameMap: { [key: string]: string } = {
+      'Arial': 'arial',
+      'Times New Roman': 'times',
+      'Helvetica': 'helvetica',
+      'Georgia': 'georgia',
+      'Courier New': 'courier'
+    };
+    
+    mappedValue = fontNameMap[firstFont] || '';
+    console.log('Mapped value:', mappedValue);
+    return mappedValue;
+  };
   
   // Store a complete snapshot of content before save
   const contentSnapshotRef = useRef<{content: string, contentHtml: string} | null>(null);
@@ -875,18 +940,11 @@ export default function EditorPage() {
                       </SelectContent>
                     </Select>
                     
-                    <Select value="arial" onValueChange={(value) => {
-                      const fontMap: { [key: string]: string } = {
-                        'arial': 'Arial, sans-serif',
-                        'times': 'Times New Roman, serif',
-                        'helvetica': 'Helvetica, Arial, sans-serif',
-                        'georgia': 'Georgia, serif',
-                        'courier': 'Courier New, monospace'
-                      };
+                    <Select value={getCurrentFontFamilyValue()} onValueChange={(value) => {
                       handleTopToolbarAction('font-family', fontMap[value] || value);
                     }}>
                       <SelectTrigger className="w-24 h-8">
-                        <SelectValue />
+                        <SelectValue placeholder="Font" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="arial">Arial</SelectItem>
@@ -912,6 +970,7 @@ export default function EditorPage() {
                   <HtmlEditor
                     content={contentHtml}
                     editorRef={htmlEditorRef}
+                    onFontFamilyChange={handleFontFamilyChange}
                     onChange={(newContent: string) => {
                       // Prevent content changes during save operations
                       if (isSaving || isReloading) {
