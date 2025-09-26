@@ -973,75 +973,10 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
         selection.addRange(newRange);
       }
       
-      // Check if the selected text is already wrapped in a span with font-family
-      if (!editorRef.current) return;
-      const walker = document.createTreeWalker(editorRef.current, NodeFilter.SHOW_TEXT, null);
-      const textNodes: Text[] = [];
-      
-      while (walker.nextNode()) {
-        const node = walker.currentNode as Text;
-        
-        // Skip empty text nodes (whitespace only)
-        if (!node.textContent || node.textContent.trim() === '') {
-          continue;
-        }
-        
-        const nodeRange = document.createRange();
-        nodeRange.selectNodeContents(node);
-        
-        // Check if node intersects with the selection
-        const startComparison = newRange.compareBoundaryPoints(Range.START_TO_END, nodeRange);
-        const endComparison = newRange.compareBoundaryPoints(Range.END_TO_START, nodeRange);
-        
-        if (startComparison > 0 && endComparison < 0) {
-          textNodes.push(node);
-        }
-      }
-      
-      // Check if all selected text is already wrapped with a span that has font-family
-      let allTextInFontSpan = true;
-      let existingFontSpan: HTMLElement | null = null;
-      
-      for (const textNode of textNodes) {
-        const parent = textNode.parentNode as HTMLElement;
-        if (parent.nodeName.toLowerCase() === 'span' && parent.style.fontFamily) {
-          if (!existingFontSpan) {
-            existingFontSpan = parent;
-          } else if (existingFontSpan !== parent) {
-            // Different spans, we need to handle this case
-            allTextInFontSpan = false;
-            break;
-          }
-        } else {
-          allTextInFontSpan = false;
-          break;
-        }
-      }
-      
-      if (allTextInFontSpan && existingFontSpan) {
-        // Replace the existing font-family value
-        existingFontSpan.style.fontFamily = value;
-      } else {
-        // Apply font family to each text node individually to avoid wrapping block elements
-        textNodes.forEach((textNode) => {
-          const parent = textNode.parentNode as HTMLElement;
-          
-          // Check if the text node is already in a span with font-family
-          if (parent.nodeName.toLowerCase() === 'span' && parent.style.fontFamily) {
-            // Update existing span
-            parent.style.fontFamily = value;
-          } else {
-            // Create new span for this text node
-            const span = document.createElement('span');
-            span.style.fontFamily = value;
-            
-            // Replace the text node with the span containing the text
-            const textContent = textNode.textContent || '';
-            span.textContent = textContent;
-            parent.replaceChild(span, textNode);
-          }
-        });
-      }
+      const span = document.createElement('span');
+      span.style.fontFamily = value;
+      span.appendChild(newRange.extractContents());
+      newRange.insertNode(span);
       
       // Notify parent of font family change
       if (onFontFamilyChange) {
