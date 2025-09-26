@@ -169,6 +169,19 @@ function PreserveStyleEditor({ content, onChange }: PreserveStyleEditorProps) {
       return;
     }
     
+    // Validate that the range is still valid
+    try {
+      const testRange = savedRange.cloneRange();
+      const testText = testRange.toString();
+      if (!testText || testText.trim() === '') {
+        console.log('Range contains no text');
+        return;
+      }
+    } catch (error) {
+      console.log('Range is invalid:', error);
+      return;
+    }
+    
     // Ensure the editor is focused
     if (editorRef.current) {
       editorRef.current.focus();
@@ -269,11 +282,11 @@ function PreserveStyleEditor({ content, onChange }: PreserveStyleEditorProps) {
       const selection = window.getSelection();
       if (selection && selection.rangeCount > 0) {
         const range = selection.getRangeAt(0);
-        // Only store non-collapsed selections
-        if (!range.collapsed && editorRef.current && editorRef.current.contains(range.commonAncestorContainer)) {
+        // Store both collapsed and non-collapsed selections, but prioritize non-collapsed
+        if (editorRef.current && editorRef.current.contains(range.commonAncestorContainer)) {
           lastSelectionRef.current = range.cloneRange();
           lastSelectedTextRef.current = range.toString();
-          console.log('Stored selection:', range.toString());
+          console.log('Stored selection:', range.toString(), 'Collapsed:', range.collapsed);
         }
       }
     };
@@ -646,28 +659,101 @@ function PreserveStyleEditor({ content, onChange }: PreserveStyleEditorProps) {
   };
 
   // Fallback function to find and select text
-  const findAndSelectText = (text: string) => {
-    if (!editorRef.current || !text) return null;
+  // const findAndSelectText = (text: string) => {
+  //   if (!editorRef.current || !text || text.trim() === '') return null;
     
+  //   const walker = document.createTreeWalker(
+  //     editorRef.current,
+  //     NodeFilter.SHOW_TEXT,
+  //     null
+  //   );
+    
+  //   let node;
+  //   while (node = walker.nextNode()) {
+  //     const textContent = node.textContent || '';
+  //     const index = textContent.indexOf(text);
+  //     if (index !== -1) {
+  //       const range = document.createRange();
+  //       range.setStart(node, index);
+  //       range.setEnd(node, index + text.length);
+        
+  //       // Validate the range
+  //       try {
+  //         const testText = range.toString();
+  //         if (testText === text) {
+  //           console.log('Found and validated text:', testText);
+  //           return range;
+  //         }
+  //       } catch (error) {
+  //         console.log('Error validating range:', error);
+  //         continue;
+  //       }
+  //     }
+  //   }
+  //   return null;
+  // };
+
+  const findAndSelectText = (text: string): Range | null => {
+    if (!editorRef.current || !text.trim()) return null;
+  
     const walker = document.createTreeWalker(
       editorRef.current,
       NodeFilter.SHOW_TEXT,
       null
     );
-    
-    let node;
-    while (node = walker.nextNode()) {
-      const textContent = node.textContent || '';
-      const index = textContent.indexOf(text);
-      if (index !== -1) {
-        const range = document.createRange();
-        range.setStart(node, index);
-        range.setEnd(node, index + text.length);
-        return range;
+  
+    let fullText = '';
+    const nodeMap: { node: Node; start: number; end: number }[] = [];
+  
+    let node: Node | null;
+    while ((node = walker.nextNode())) {
+      const nodeText = node.textContent ?? '';
+      const start = fullText.length;
+      const end = start + nodeText.length;
+      nodeMap.push({ node, start, end });
+      fullText += nodeText;
+    }
+  
+    // Search in combined text
+    const index = fullText.indexOf(text);
+    if (index === -1) return null;
+  
+    // Find start node + offset
+    let startNode: Node | null = null;
+    let startOffset = 0;
+    let endNode: Node | null = null;
+    let endOffset = 0;
+  
+    for (const entry of nodeMap) {
+      if (!startNode && index >= entry.start && index < entry.end) {
+        startNode = entry.node;
+        startOffset = index - entry.start;
+      }
+      if (index + text.length > entry.start && index + text.length <= entry.end) {
+        endNode = entry.node;
+        endOffset = index + text.length - entry.start;
+        break;
       }
     }
+  
+    if (startNode && endNode) {
+      const range = document.createRange();
+      range.setStart(startNode, startOffset);
+      range.setEnd(endNode, endOffset);
+  
+      // Optional: select it
+      const selection = window.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+  
+      console.log('Found and selected text:', range.toString());
+      return range;
+    }
+  
     return null;
   };
+  
+  
 
   // Listen for toolbar actions
   useEffect(() => {
@@ -677,86 +763,121 @@ function PreserveStyleEditor({ content, onChange }: PreserveStyleEditorProps) {
       
       const { action, value } = event.detail;
       
-      // Use the last stored selection
-      let savedRange = lastSelectionRef.current;
-      console.log('Using stored range:', savedRange ? savedRange.toString() : 'none', 'Collapsed:', savedRange ? savedRange.collapsed : 'N/A');
+      // Force focus to the editor to ensure we can capture selection
+      editorRef.current.focus();
       
-      // If no valid range, try to find the last selected text
-      if (!savedRange || savedRange.collapsed) {
-        console.log('Trying fallback - finding text:', lastSelectedTextRef.current);
-        savedRange = findAndSelectText(lastSelectedTextRef.current);
-        if (savedRange) {
-          console.log('Found text with fallback:', savedRange.toString());
+      // Use a small delay to ensure focus is set and selection is available
+      setTimeout(() => {
+        // Immediately capture the current selection before any async operations
+        const currentSelection = window.getSelection();
+        let savedRange: Range | null = null;
+        
+        // Check if there's a current valid selection
+        if (currentSelection && currentSelection.rangeCount > 0) {
+          const currentRange = currentSelection.getRangeAt(0);
+          if (!currentRange.collapsed && editorRef.current && editorRef.current.contains(currentRange.commonAncestorContainer)) {
+            savedRange = currentRange.cloneRange();
+            console.log('Using current selection:', savedRange.toString());
+          }
         }
-      }
-      
-      // Apply formatting with saved selection
-      switch (action) {
-        case 'bold':
-          applyFormattingWithRange('bold', savedRange);
-          break;
-        case 'italic':
-          applyFormattingWithRange('italic', savedRange);
-          break;
-        case 'underline':
-          applyFormattingWithRange('underline', savedRange);
-          break;
-        case 'strikethrough':
-          applyFormattingWithRange('strikethrough', savedRange);
-          break;
-        case 'align-left':
-          applyAlignment('left', savedRange);
-          break;
-        case 'align-center':
-          applyAlignment('center', savedRange);
-          break;
-        case 'align-right':
-          applyAlignment('right', savedRange);
-          break;
-        case 'align-justify':
-          applyAlignment('justify', savedRange);
-          break;
-        case 'bullet-list':
-          applyList('ul', savedRange);
-          break;
-        case 'ordered-list':
-          applyList('ol', savedRange);
-          break;
-        case 'link':
-          applyLink(savedRange);
-          break;
-        case 'unlink':
-          removeLink(savedRange);
-          break;
-        case 'image':
-          insertImage(savedRange);
-          break;
-        case 'table':
-          insertTable(savedRange);
-          break;
-        case 'color':
-          applyColor(savedRange);
-          break;
-        case 'highlight':
-          applyHighlight(savedRange);
-          break;
-        case 'font-size':
-          applyFontSize(value, savedRange);
-          break;
-        case 'font-family':
-          applyFontFamily(value, savedRange);
-          break;
-        case 'heading':
-          applyHeading(value, savedRange);
-          break;
-        case 'paragraph':
-          applyParagraph(savedRange);
-          break;
-      }
-      
-      // Trigger input event to update content
-      const inputEvent = new Event('input', { bubbles: true });
-      editorRef.current.dispatchEvent(inputEvent);
+        
+        // If no current selection, try the stored selection
+        if (!savedRange) {
+          savedRange = lastSelectionRef.current;
+          console.log('Using stored range:', savedRange ? savedRange.toString() : 'none', 'Collapsed:', savedRange ? savedRange.collapsed : 'N/A');
+        }
+        
+        // If still no valid range, try to find the last selected text
+        if (!savedRange || savedRange.collapsed) {
+          console.log('Trying fallback - finding text:', lastSelectedTextRef.current);
+          savedRange = findAndSelectText(lastSelectedTextRef.current);
+          if (savedRange) {
+            console.log('Found text with fallback:', savedRange.toString());
+          }
+        }
+        
+        // If we still don't have a range, try to get any selection within the editor
+        if (!savedRange || savedRange.collapsed) {
+          console.log('No valid range found, checking for any selection in editor');
+          if (currentSelection && currentSelection.rangeCount > 0) {
+            const currentRange = currentSelection.getRangeAt(0);
+            if (editorRef.current && editorRef.current.contains(currentRange.commonAncestorContainer)) {
+              savedRange = currentRange.cloneRange();
+              console.log('Using any selection in editor:', savedRange.toString());
+            }
+          }
+        }
+        
+        // Apply formatting with saved selection
+        switch (action) {
+          case 'bold':
+            applyFormattingWithRange('bold', savedRange);
+            break;
+          case 'italic':
+            applyFormattingWithRange('italic', savedRange);
+            break;
+          case 'underline':
+            applyFormattingWithRange('underline', savedRange);
+            break;
+          case 'strikethrough':
+            applyFormattingWithRange('strikethrough', savedRange);
+            break;
+          case 'align-left':
+            applyAlignment('left', savedRange);
+            break;
+          case 'align-center':
+            applyAlignment('center', savedRange);
+            break;
+          case 'align-right':
+            applyAlignment('right', savedRange);
+            break;
+          case 'align-justify':
+            applyAlignment('justify', savedRange);
+            break;
+          case 'bullet-list':
+            applyList('ul', savedRange);
+            break;
+          case 'ordered-list':
+            applyList('ol', savedRange);
+            break;
+          case 'link':
+            applyLink(savedRange);
+            break;
+          case 'unlink':
+            removeLink(savedRange);
+            break;
+          case 'image':
+            insertImage(savedRange);
+            break;
+          case 'table':
+            insertTable(savedRange);
+            break;
+          case 'color':
+            applyColor(savedRange);
+            break;
+          case 'highlight':
+            applyHighlight(savedRange);
+            break;
+          case 'font-size':
+            applyFontSize(value, savedRange);
+            break;
+          case 'font-family':
+            applyFontFamily(value, savedRange);
+            break;
+          case 'heading':
+            applyHeading(value, savedRange);
+            break;
+          case 'paragraph':
+            applyParagraph(savedRange);
+            break;
+        }
+        
+        // Trigger input event to update content
+        const inputEvent = new Event('input', { bubbles: true });
+        if (editorRef.current) {
+          editorRef.current.dispatchEvent(inputEvent);
+        }
+      }, 50); // Small delay to ensure focus and selection are properly set
     };
 
     window.addEventListener('toolbar-action', handleToolbarAction as EventListener);
@@ -781,6 +902,17 @@ function PreserveStyleEditor({ content, onChange }: PreserveStyleEditorProps) {
   
   const handleFocus = () => {
     setIsEditing(true);
+    
+    // Capture any existing selection when focusing
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      if (!range.collapsed && editorRef.current && editorRef.current.contains(range.commonAncestorContainer)) {
+        lastSelectionRef.current = range.cloneRange();
+        lastSelectedTextRef.current = range.toString();
+        console.log('Selection captured on focus:', range.toString());
+      }
+    }
   };
   
   const handleBlur = () => {
@@ -873,6 +1005,41 @@ function PreserveStyleEditor({ content, onChange }: PreserveStyleEditorProps) {
           // Ensure focus is maintained when clicking
           if (editorRef.current) {
             editorRef.current.focus();
+          }
+          
+          // Capture any existing selection when clicking in the editor
+          const selection = window.getSelection();
+          if (selection && selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            if (!range.collapsed && editorRef.current && editorRef.current.contains(range.commonAncestorContainer)) {
+              lastSelectionRef.current = range.cloneRange();
+              lastSelectedTextRef.current = range.toString();
+              console.log('Selection captured on click:', range.toString());
+            }
+          }
+        }}
+        onMouseUp={() => {
+          // Capture selection when user finishes selecting text
+          const selection = window.getSelection();
+          if (selection && selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            if (!range.collapsed && editorRef.current && editorRef.current.contains(range.commonAncestorContainer)) {
+              lastSelectionRef.current = range.cloneRange();
+              lastSelectedTextRef.current = range.toString();
+              console.log('Selection captured on mouseup:', range.toString());
+            }
+          }
+        }}
+        onMouseDown={() => {
+          // Capture selection before it might be lost
+          const selection = window.getSelection();
+          if (selection && selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            if (!range.collapsed && editorRef.current && editorRef.current.contains(range.commonAncestorContainer)) {
+              lastSelectionRef.current = range.cloneRange();
+              lastSelectedTextRef.current = range.toString();
+              console.log('Selection captured on mousedown:', range.toString());
+            }
           }
         }}
         suppressContentEditableWarning={true}
