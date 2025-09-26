@@ -884,27 +884,119 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
   // Function to apply font size
   const applyFontSize = (value: string | undefined, savedRange: Range | null) => {
     if (!value) return;
-    
-    if (savedRange && !savedRange.collapsed) {
-      if (editorRef.current) {
-        editorRef.current.focus();
+    if (!savedRange || savedRange.collapsed) return;
+    if (!editorRef.current) return;
+  
+    const selection = window.getSelection();
+    if (!selection) return;
+  
+    const range = savedRange.cloneRange();
+    const walker = document.createTreeWalker(editorRef.current, NodeFilter.SHOW_TEXT, null);
+    const textNodes: Text[] = [];
+  
+    while (walker.nextNode()) {
+      const node = walker.currentNode as Text;
+      
+      // Skip empty text nodes (whitespace only)
+      if (!node.textContent || node.textContent.trim() === '') {
+        continue;
       }
+  
+      const nodeRange = document.createRange();
+      nodeRange.selectNodeContents(node);
+  
+      // Check if node actually intersects with the selection
+      // A node intersects if it's not completely before or after the selection
+      const startComparison = range.compareBoundaryPoints(Range.START_TO_END, nodeRange);
+      const endComparison = range.compareBoundaryPoints(Range.END_TO_START, nodeRange);
       
-      const newRange = document.createRange();
-      newRange.setStart(savedRange.startContainer, savedRange.startOffset);
-      newRange.setEnd(savedRange.endContainer, savedRange.endOffset);
-      
-      const selection = window.getSelection();
-      if (selection) {
-        selection.removeAllRanges();
-        selection.addRange(newRange);
+      if (startComparison > 0 && endComparison < 0) {
+        textNodes.push(node);
       }
-      
-      const span = document.createElement('span');
-      span.style.fontSize = value;
-      span.appendChild(newRange.extractContents());
-      newRange.insertNode(span);
     }
+  
+    // Check if all selected text is already wrapped with a span that has the same font size
+    let allTextAlreadyWrapped = true;
+    for (const textNode of textNodes) {
+      const parent = textNode.parentNode as HTMLElement;
+      if (parent.nodeName.toLowerCase() !== 'span' || parent.style.fontSize !== value) {
+        allTextAlreadyWrapped = false;
+        break;
+      }
+    }
+
+    if (allTextAlreadyWrapped && textNodes.length > 0) {
+      // Remove font size formatting - unwrap all the selected text
+      textNodes.forEach((textNode) => {
+        const parent = textNode.parentNode as HTMLElement;
+        if (parent.nodeName.toLowerCase() === 'span' && parent.style.fontSize === value) {
+          const grandParent = parent.parentNode;
+          if (grandParent) {
+            // Move all children of the wrapper to its parent
+            while (parent.firstChild) {
+              grandParent.insertBefore(parent.firstChild, parent);
+            }
+            // Remove the empty wrapper
+            grandParent.removeChild(parent);
+          }
+        }
+      });
+    } else {
+      // Apply font size formatting - wrap the selected text
+      textNodes.forEach((textNode) => {
+        const parent = textNode.parentNode as HTMLElement;
+        
+        // Check if already wrapped with span with same font size
+        if (parent.nodeName.toLowerCase() === 'span' && parent.style.fontSize === value) return;
+  
+        const startOffset = textNode === range.startContainer ? range.startOffset : 0;
+        const endOffset = textNode === range.endContainer ? range.endOffset : textNode.textContent!.length;
+  
+        if (startOffset === 0 && endOffset === textNode.textContent!.length) {
+          const wrapper = document.createElement('span');
+          wrapper.style.fontSize = value;
+          parent.replaceChild(wrapper, textNode);
+          wrapper.appendChild(textNode);
+        } else {
+          const before = textNode.textContent!.slice(0, startOffset);
+          const selected = textNode.textContent!.slice(startOffset, endOffset);
+          const after = textNode.textContent!.slice(endOffset);
+  
+          if (before) parent.insertBefore(document.createTextNode(before), textNode);
+  
+          const wrapper = document.createElement('span');
+          wrapper.style.fontSize = value;
+          wrapper.appendChild(document.createTextNode(selected));
+          parent.insertBefore(wrapper, textNode);
+  
+          if (after) parent.insertBefore(document.createTextNode(after), textNode);
+  
+          parent.removeChild(textNode);
+        }
+      });
+    }
+  
+    // Restore cursor - find the last created wrapper element
+    if (textNodes.length > 0) {
+      const cursorRange = document.createRange();
+      
+      // Find the last wrapper element that was created
+      const lastWrapper = editorRef.current.querySelector(`span[style*="font-size: ${value}"]:last-of-type`);
+      
+      if (lastWrapper) {
+        cursorRange.setStartAfter(lastWrapper);
+        cursorRange.setEndAfter(lastWrapper);
+      } else {
+        // Fallback: set cursor at the end of the range
+        cursorRange.setStart(range.endContainer, range.endOffset);
+        cursorRange.setEnd(range.endContainer, range.endOffset);
+      }
+      
+      selection.removeAllRanges();
+      selection.addRange(cursorRange);
+    }
+  
+    editorRef.current.dispatchEvent(new Event("input", { bubbles: true }));
   };
 
   // Function to get current font family of selected text
