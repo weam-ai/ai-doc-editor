@@ -524,22 +524,56 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
       selection.addRange(newRange);
     }
     
-    // Find the containing block element
-    let blockElement: Node | null = newRange.commonAncestorContainer;
-    while (blockElement && blockElement.nodeType !== Node.ELEMENT_NODE) {
-      blockElement = blockElement.parentNode;
+    // Find the most specific element that contains the selected text
+    let targetElement: HTMLElement | null = null;
+    
+    // Get all elements in the editor
+    const allElements = editorRef.current?.querySelectorAll('h1, h2, h3, h4, h5, h6, p, div, span, li') || [];
+    const elementsArray = Array.from(allElements);
+    
+    // Find the element that contains the selection and has the highest specificity
+    for (const element of elementsArray) {
+      const htmlElement = element as HTMLElement;
+      
+      // Check if this element contains the selected text
+      if (newRange.intersectsNode(htmlElement)) {
+        // Check if this element is more specific than the current target
+        if (!targetElement || isMoreSpecific(htmlElement, targetElement)) {
+          targetElement = htmlElement;
+        }
+      }
     }
     
-    if (blockElement) {
-      // Find the nearest block-level element
-      while (blockElement && !['P', 'DIV', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'LI'].includes(blockElement.nodeName)) {
-        blockElement = blockElement.parentNode;
-      }
-      
-      if (blockElement) {
-        (blockElement as HTMLElement).style.textAlign = alignment;
+    // If no specific element found, fall back to the direct parent of the text node
+    if (!targetElement) {
+      if (newRange.startContainer.nodeType === Node.TEXT_NODE) {
+        targetElement = newRange.startContainer.parentElement;
       }
     }
+    
+    // Apply text-align style to the target element
+    if (targetElement) {
+      targetElement.style.textAlign = alignment;
+    }
+  };
+  
+  // Helper function to determine if one element is more specific than another
+  const isMoreSpecific = (element1: HTMLElement, element2: HTMLElement): boolean => {
+    const tagPriority: { [key: string]: number } = {
+      'H1': 10, 'H2': 10, 'H3': 10, 'H4': 10, 'H5': 10, 'H6': 10,
+      'P': 8, 'SPAN': 6, 'LI': 7, 'DIV': 1
+    };
+    
+    const priority1 = tagPriority[element1.tagName] || 0;
+    const priority2 = tagPriority[element2.tagName] || 0;
+    
+    // Higher priority is more specific
+    if (priority1 !== priority2) {
+      return priority1 > priority2;
+    }
+    
+    // If same priority, prefer the one that's deeper in the DOM tree
+    return element1.contains(element2);
   };
 
   // Function to apply lists
