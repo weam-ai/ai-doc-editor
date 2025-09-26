@@ -14,6 +14,7 @@ import MarkdownEditor from '@/components/editor/MarkdownEditor';
 import TwoColumnEditor from '@/components/editor/TwoColumnEditor';
 import AnnualReportEditor from '@/components/editor/AnnualReportEditor';
 import HtmlEditor from '@/components/editor/HtmlEditor';
+import { FontSizeSelector } from '@/components/editor/FontSizeSelector';
 import { exportToPDF, exportToWord, exportToHTML } from '@/lib/export';
 import { 
   ArrowLeft, 
@@ -77,6 +78,9 @@ export default function EditorPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isReloading, setIsReloading] = useState(false);
   const [downloadFormat, setDownloadFormat] = useState<string>('');
+  
+  // Ref for the HTML editor
+  const htmlEditorRef = useRef<HTMLDivElement>(null);
   
   // Use refs to preserve content during save operations
   const contentRef = useRef(content);
@@ -893,12 +897,10 @@ export default function EditorPage() {
                       </SelectContent>
                     </Select>
                     
-                    <Input
-                      type="number"
-                      defaultValue="14"
-                      className="w-16 h-8 text-center"
-                      onBlur={(e) => handleTopToolbarAction('font-size', e.target.value + 'px')}
-                      onKeyDown={(e) => e.key === 'Enter' && handleTopToolbarAction('font-size', e.currentTarget.value + 'px')}
+                    <FontSizeSelector
+                      editorRef={htmlEditorRef}
+                      placeholder="14"
+                      className="w-20 h-8"
                     />
                   </div>
                 </div>
@@ -909,6 +911,7 @@ export default function EditorPage() {
                   // HTML Editor - show directly without tabs
                   <HtmlEditor
                     content={contentHtml}
+                    editorRef={htmlEditorRef}
                     onChange={(newContent: string) => {
                       // Prevent content changes during save operations
                       if (isSaving || isReloading) {

@@ -18,11 +18,13 @@ import Link from '@tiptap/extension-link';
 interface HtmlEditorProps {
   content: string;
   onChange: (content: string) => void;
+  editorRef?: React.RefObject<HTMLDivElement>;
 }
 
 interface PreserveStyleEditorProps {
   content: string;
   onChange: (content: string) => void;
+  editorRef?: React.RefObject<HTMLDivElement>;
 }
 
 interface ColorPickerProps {
@@ -95,8 +97,9 @@ function ColorPicker({ isOpen, onClose, onSelectColor, type }: ColorPickerProps)
 }
 
 // Simple contentEditable editor that preserves all inline styles perfectly
-function PreserveStyleEditor({ content, onChange }: PreserveStyleEditorProps) {
-  const editorRef = useRef<HTMLDivElement>(null);
+function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef }: PreserveStyleEditorProps) {
+  const internalEditorRef = useRef<HTMLDivElement>(null);
+  const editorRef = externalEditorRef || internalEditorRef;
   const [isEditing, setIsEditing] = useState(false);
   const debounceTimeoutRef = useRef<NodeJS.Timeout>();
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
@@ -1373,7 +1376,7 @@ function PreserveStyleEditor({ content, onChange }: PreserveStyleEditorProps) {
   );
 }
 
-export default function HtmlEditor({ content, onChange }: HtmlEditorProps) {
+export default function HtmlEditor({ content, onChange, editorRef }: HtmlEditorProps) {
   const [htmlContent, setHtmlContent] = useState(content || '');
   const [activeTab, setActiveTab] = useState('preview');
   const isUpdatingFromPreview = useRef(false);
@@ -1528,6 +1531,7 @@ export default function HtmlEditor({ content, onChange }: HtmlEditorProps) {
               <PreserveStyleEditor
                 content={extractBodyContent(htmlContent)}
                 onChange={handlePreviewChange}
+                editorRef={editorRef}
               />
             </div>
           </Card>
