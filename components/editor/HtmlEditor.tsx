@@ -294,15 +294,21 @@ function PreserveStyleEditor({ content, onChange }: PreserveStyleEditorProps) {
   
     while (walker.nextNode()) {
       const node = walker.currentNode as Text;
+      
+      // Skip empty text nodes (whitespace only)
+      if (!node.textContent || node.textContent.trim() === '') {
+        continue;
+      }
   
       const nodeRange = document.createRange();
       nodeRange.selectNodeContents(node);
   
-      // Check if node intersects selection
-      if (
-        range.compareBoundaryPoints(Range.END_TO_START, nodeRange) < 0 &&
-        range.compareBoundaryPoints(Range.START_TO_END, nodeRange) > 0
-      ) {
+      // Check if node actually intersects with the selection
+      // A node intersects if it's not completely before or after the selection
+      const startComparison = range.compareBoundaryPoints(Range.START_TO_END, nodeRange);
+      const endComparison = range.compareBoundaryPoints(Range.END_TO_START, nodeRange);
+      
+      if (startComparison > 0 && endComparison < 0) {
         textNodes.push(node);
       }
     }
