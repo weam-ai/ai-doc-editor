@@ -156,121 +156,207 @@ function PreserveStyleEditor({ content, onChange }: PreserveStyleEditorProps) {
   };
 
   // Function to apply formatting using a saved range
+  // const applyFormattingWithRange = (format: string, savedRange: Range | null) => {
+  //   console.log('Applying formatting with range:', format, savedRange);
+    
+  //   if (!savedRange) {
+  //     console.log('No saved range available');
+  //     return;
+  //   }
+    
+  //   if (savedRange.collapsed) {
+  //     console.log('Saved range is collapsed, no text selected');
+  //     return;
+  //   }
+    
+  //   // Validate that the range is still valid
+  //   try {
+  //     const testRange = savedRange.cloneRange();
+  //     const testText = testRange.toString();
+  //     if (!testText || testText.trim() === '') {
+  //       console.log('Range contains no text');
+  //       return;
+  //     }
+  //   } catch (error) {
+  //     console.log('Range is invalid:', error);
+  //     return;
+  //   }
+    
+  //   // Ensure the editor is focused
+  //   if (editorRef.current) {
+  //     editorRef.current.focus();
+  //   }
+    
+  //   // Create a new range from the saved range to avoid issues
+  //   const newRange = document.createRange();
+  //   newRange.setStart(savedRange.startContainer, savedRange.startOffset);
+  //   newRange.setEnd(savedRange.endContainer, savedRange.endOffset);
+    
+  //   // Restore the selection
+  //   const selection = window.getSelection();
+  //   if (selection) {
+  //     selection.removeAllRanges();
+  //     selection.addRange(newRange);
+  //   }
+    
+  //   // Determine the tag name for the format
+  //   let tagName: string;
+  //   switch (format) {
+  //     case 'bold':
+  //       tagName = 'strong';
+  //       break;
+  //     case 'italic':
+  //       tagName = 'em';
+  //       break;
+  //     case 'underline':
+  //       tagName = 'u';
+  //       break;
+  //     case 'strikethrough':
+  //       tagName = 's';
+  //       break;
+  //     default:
+  //       return;
+  //   }
+
+  //   // Check if the text is already formatted with this tag
+  //   if (isTextFormatted(newRange, tagName)) {
+  //     console.log('Text is already formatted, removing formatting');
+  //     // Remove the formatting
+  //     if (removeFormatting(newRange, tagName)) {
+  //       // Trigger input event to update content
+  //       const inputEvent = new Event('input', { bubbles: true });
+  //       if (editorRef.current) {
+  //         editorRef.current.dispatchEvent(inputEvent);
+  //       }
+  //       return;
+  //     }
+  //   }
+
+  //   // Create the appropriate element based on format
+  //   let element: HTMLElement;
+  //   switch (format) {
+  //     case 'bold':
+  //       element = document.createElement('strong');
+  //       break;
+  //     case 'italic':
+  //       element = document.createElement('em');
+  //       break;
+  //     case 'underline':
+  //       element = document.createElement('u');
+  //       break;
+  //     case 'strikethrough':
+  //       element = document.createElement('s');
+  //       break;
+  //     default:
+  //       return;
+  //   }
+
+  //   // Extract the selected content and wrap it
+  //   const contents = newRange.extractContents();
+  //   element.appendChild(contents);
+  //   newRange.insertNode(element);
+
+  //   // Clear selection and set cursor after the element
+  //   if (selection) {
+  //     selection.removeAllRanges();
+  //     const cursorRange = document.createRange();
+  //     cursorRange.setStartAfter(element);
+  //     cursorRange.setEndAfter(element);
+  //     selection.addRange(cursorRange);
+  //   }
+
+  //   // Trigger input event to update content
+  //   const inputEvent = new Event('input', { bubbles: true });
+  //   if (editorRef.current) {
+  //     editorRef.current.dispatchEvent(inputEvent);
+  //   }
+  // };
+
   const applyFormattingWithRange = (format: string, savedRange: Range | null) => {
-    console.log('Applying formatting with range:', format, savedRange);
-    
-    if (!savedRange) {
-      console.log('No saved range available');
-      return;
-    }
-    
-    if (savedRange.collapsed) {
-      console.log('Saved range is collapsed, no text selected');
-      return;
-    }
-    
-    // Validate that the range is still valid
-    try {
-      const testRange = savedRange.cloneRange();
-      const testText = testRange.toString();
-      if (!testText || testText.trim() === '') {
-        console.log('Range contains no text');
-        return;
-      }
-    } catch (error) {
-      console.log('Range is invalid:', error);
-      return;
-    }
-    
-    // Ensure the editor is focused
-    if (editorRef.current) {
-      editorRef.current.focus();
-    }
-    
-    // Create a new range from the saved range to avoid issues
-    const newRange = document.createRange();
-    newRange.setStart(savedRange.startContainer, savedRange.startOffset);
-    newRange.setEnd(savedRange.endContainer, savedRange.endOffset);
-    
-    // Restore the selection
+    if (!savedRange || savedRange.collapsed) return;
+    if (!editorRef.current) return;
+  
     const selection = window.getSelection();
-    if (selection) {
-      selection.removeAllRanges();
-      selection.addRange(newRange);
-    }
-    
-    // Determine the tag name for the format
-    let tagName: string;
+    if (!selection) return;
+  
+    let tagName: keyof HTMLElementTagNameMap;
     switch (format) {
-      case 'bold':
-        tagName = 'strong';
-        break;
-      case 'italic':
-        tagName = 'em';
-        break;
-      case 'underline':
-        tagName = 'u';
-        break;
-      case 'strikethrough':
-        tagName = 's';
-        break;
-      default:
-        return;
+      case "bold": tagName = "strong"; break;
+      case "italic": tagName = "em"; break;
+      case "underline": tagName = "u"; break;
+      case "strikethrough": tagName = "s"; break;
+      default: return;
     }
-
-    // Check if the text is already formatted with this tag
-    if (isTextFormatted(newRange, tagName)) {
-      console.log('Text is already formatted, removing formatting');
-      // Remove the formatting
-      if (removeFormatting(newRange, tagName)) {
-        // Trigger input event to update content
-        const inputEvent = new Event('input', { bubbles: true });
-        if (editorRef.current) {
-          editorRef.current.dispatchEvent(inputEvent);
-        }
-        return;
+  
+    const range = savedRange.cloneRange();
+    const walker = document.createTreeWalker(editorRef.current, NodeFilter.SHOW_TEXT, null);
+    const textNodes: Text[] = [];
+  
+    while (walker.nextNode()) {
+      const node = walker.currentNode as Text;
+  
+      const nodeRange = document.createRange();
+      nodeRange.selectNodeContents(node);
+  
+      // Check if node intersects selection
+      if (
+        range.compareBoundaryPoints(Range.END_TO_START, nodeRange) < 0 &&
+        range.compareBoundaryPoints(Range.START_TO_END, nodeRange) > 0
+      ) {
+        textNodes.push(node);
       }
     }
-
-    // Create the appropriate element based on format
-    let element: HTMLElement;
-    switch (format) {
-      case 'bold':
-        element = document.createElement('strong');
-        break;
-      case 'italic':
-        element = document.createElement('em');
-        break;
-      case 'underline':
-        element = document.createElement('u');
-        break;
-      case 'strikethrough':
-        element = document.createElement('s');
-        break;
-      default:
-        return;
-    }
-
-    // Extract the selected content and wrap it
-    const contents = newRange.extractContents();
-    element.appendChild(contents);
-    newRange.insertNode(element);
-
-    // Clear selection and set cursor after the element
-    if (selection) {
-      selection.removeAllRanges();
+  
+    textNodes.forEach((textNode) => {
+      const parent = textNode.parentNode as HTMLElement;
+      if (parent.nodeName.toLowerCase() === tagName) return;
+  
+      const startOffset = textNode === range.startContainer ? range.startOffset : 0;
+      const endOffset = textNode === range.endContainer ? range.endOffset : textNode.textContent!.length;
+  
+      if (startOffset === 0 && endOffset === textNode.textContent!.length) {
+        const wrapper = document.createElement(tagName);
+        parent.replaceChild(wrapper, textNode);
+        wrapper.appendChild(textNode);
+      } else {
+        const before = textNode.textContent!.slice(0, startOffset);
+        const selected = textNode.textContent!.slice(startOffset, endOffset);
+        const after = textNode.textContent!.slice(endOffset);
+  
+        if (before) parent.insertBefore(document.createTextNode(before), textNode);
+  
+        const wrapper = document.createElement(tagName);
+        wrapper.appendChild(document.createTextNode(selected));
+        parent.insertBefore(wrapper, textNode);
+  
+        if (after) parent.insertBefore(document.createTextNode(after), textNode);
+  
+        parent.removeChild(textNode);
+      }
+    });
+  
+    // Restore cursor - find the last created wrapper element
+    if (textNodes.length > 0) {
       const cursorRange = document.createRange();
-      cursorRange.setStartAfter(element);
-      cursorRange.setEndAfter(element);
+      
+      // Find the last wrapper element that was created
+      const lastWrapper = editorRef.current.querySelector(`${tagName}:last-of-type`);
+      
+      if (lastWrapper) {
+        cursorRange.setStartAfter(lastWrapper);
+        cursorRange.setEndAfter(lastWrapper);
+      } else {
+        // Fallback: set cursor at the end of the range
+        cursorRange.setStart(range.endContainer, range.endOffset);
+        cursorRange.setEnd(range.endContainer, range.endOffset);
+      }
+      
+      // selection.removeAllRanges();
       selection.addRange(cursorRange);
     }
-
-    // Trigger input event to update content
-    const inputEvent = new Event('input', { bubbles: true });
-    if (editorRef.current) {
-      editorRef.current.dispatchEvent(inputEvent);
-    }
-  };
+  
+    editorRef.current.dispatchEvent(new Event("input", { bubbles: true }));
+  };   
 
   // Store the last selection globally
   const lastSelectionRef = useRef<Range | null>(null);
