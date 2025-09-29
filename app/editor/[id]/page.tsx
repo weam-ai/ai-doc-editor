@@ -655,9 +655,9 @@ export default function EditorPage() {
                   {isLoading && (
                     <div className="flex items-center justify-center py-2">
                       <div className="flex space-x-1">
-                        <div className="w-3 h-3 rounded-full animate-bounce" style={{ backgroundColor: '#6336e8' }}></div>
-                        <div className="w-3 h-3 rounded-full animate-bounce" style={{ backgroundColor: '#6336e8', animationDelay: '0.1s' }}></div>
-                        <div className="w-3 h-3 rounded-full animate-bounce" style={{ backgroundColor: '#6336e8', animationDelay: '0.2s' }}></div>
+                        <div className="w-3 h-3 rounded-full animate-bounce" style={{ backgroundColor: '#000000' }}></div>
+                        <div className="w-3 h-3 rounded-full animate-bounce" style={{ backgroundColor: '#000000', animationDelay: '0.1s' }}></div>
+                        <div className="w-3 h-3 rounded-full animate-bounce" style={{ backgroundColor: '#000000', animationDelay: '0.2s' }}></div>
                       </div>
                     </div>
                   )}
