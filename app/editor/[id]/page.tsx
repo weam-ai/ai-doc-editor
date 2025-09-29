@@ -41,7 +41,8 @@ import {
   Highlighter,
   Type,
   Heading1,
-  Heading2
+  Heading2,
+  EditIcon
 } from 'lucide-react';
 
 interface Document {
@@ -525,33 +526,31 @@ export default function EditorPage() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
       <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-4">
+        <div className="w-full mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between md:h-16 flex-col md:flex-row p-1 md:p-0">
+            <div className="flex items-center space-x-4 md:flex-row flex-col">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => router.push('/')}
-                className="mr-6"
+                className="mr-6 border px-4 py-2 rounded-md hover:bg-gray-900 hover:text-white"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Templates
               </Button>
-              <Button variant="ghost" size="icon">
-                <Menu className="w-4 h-4" />
-              </Button>
+              
               <div className="flex items-center space-x-2">
-                <FileText className="w-5 h-5 text-primary" />
+                <FileText className="w-5 h-5 text-black" />
                 <Input
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="border-none text-lg font-semibold bg-transparent focus-visible:ring-0 px-0"
+                  className="border-none text-lg font-semibold bg-transparent px-0"
                   onBlur={() => setIsEditing(false)}
                   onFocus={() => setIsEditing(true)}
                 />
                 {isEditing && (
                   <Button variant="ghost" size="icon" className="h-6 w-6">
-                    <ChevronDown className="w-4 h-4" />
+                    <EditIcon className="w-4 h-4" />
                   </Button>
                 )}
                 {/* {document?.isTemplate && (
@@ -694,7 +693,7 @@ export default function EditorPage() {
 
               {/* Formatting Toolbar */}
               <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-2">
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-2 max-xl:flex-wrap space-y-2">
                   <div className="flex items-center space-x-1">
                     <Button 
                       variant="ghost" 

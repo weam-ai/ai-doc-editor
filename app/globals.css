@@ -58,22 +58,6 @@
   }
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-}
-
-::-webkit-scrollbar-track {
-  @apply bg-gray-100 dark:bg-gray-800;
-}
-
-::-webkit-scrollbar-thumb {
-  @apply bg-primary rounded-full;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-primary/80;
-}
 
 /* Editor styles */
 .ProseMirror {
@@ -102,32 +86,6 @@
   @apply text-2xl;
 }
 
-
-/* 
-.html-preview code {
-  @apply bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-sm font-mono;
-}
-
-.html-preview pre {
-  @apply bg-gray-100 dark:bg-gray-800 p-4 rounded-lg overflow-x-auto;
-}
-
-.html-preview blockquote {
-  @apply border-l-4 border-gray-300 dark:border-gray-600 pl-4 italic;
-}
-
-.html-preview table {
-  @apply w-full border-collapse border border-gray-300 dark:border-gray-600;
-}
-
-.html-preview th,
-.html-preview td {
-  @apply border border-gray-300 dark:border-gray-600 px-3 py-2;
-}
-
-.html-preview th {
-  @apply bg-gray-100 dark:bg-gray-800 font-semibold;
-} */
 
 .ProseMirror p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
