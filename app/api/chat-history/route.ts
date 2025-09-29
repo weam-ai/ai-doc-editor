@@ -61,6 +61,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if this is a template preview (documentId starts with 'template_')
+    // If it's a template preview, don't save chat history
+    if (documentId.startsWith('template_')) {
+      console.log('Chat History POST - Skipping save for template preview:', documentId);
+      return NextResponse.json({ message: 'Chat history not saved for template previews' }, { status: 200 });
+    }
+
     await dbConnect();
     
     const userId = session.user._id;

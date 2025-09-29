@@ -335,7 +335,8 @@ Remember: You're not just generating content, you're being a helpful assistant w
     try {
       const session = await getSession();
       
-      if (session?.user?._id && documentId) {
+      // Only save chat history if documentId exists and is not a template preview
+      if (session?.user?._id && documentId && !documentId.startsWith('template_')) {
         const userId = session.user._id;
         const userEmail = session.user.email;
         const companyId = session.user.companyId;
@@ -370,6 +371,8 @@ Remember: You're not just generating content, you're being a helpful assistant w
           });
           await chatHistory.save();
         }
+      } else {
+        console.log('Generate API - Skipping chat history save for template preview:', documentId);
       }
     } catch (chatError) {
       console.error('Error saving chat history:', chatError);
