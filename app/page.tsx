@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { FileText, Grid, Trash2, ArrowLeft } from 'lucide-react';
+import { FileText, Grid, Trash2, ArrowLeft, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
 import { useToast } from '@/hooks/useToast';
 import { formatDate, truncateText } from '@/lib/utils';
 import { allTemplates } from '@/templates';
@@ -43,6 +44,16 @@ export default function Dashboard() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [documentToDelete, setDocumentToDelete] = useState<Document | null>(null);
+
+  // Category options for both tabs and select
+  const categoryOptions = [
+    { value: 'all', label: 'All Templates' },
+    { value: 'job-applications', label: 'Job Applications' },
+    { value: 'business-communications', label: 'Business Communications' },
+    { value: 'reports-analysis', label: 'Reports & Analysis' },
+    { value: 'creative-marketing', label: 'Creative & Marketing' },
+    { value: 'customer-success', label: 'Customer Success' },
+  ];
 
   useEffect(() => {
     loadSampleTemplates();
@@ -200,9 +211,9 @@ export default function Dashboard() {
   // }, []);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex md:flex-row flex-col">
       {/* Left Sidebar */}
-      <div className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-4">
+      <div className="md:w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-4">
         <div className="space-y-6">
           {/* Logo/App Launcher */}
           <div className="flex items-center space-x-2">
@@ -236,18 +247,18 @@ export default function Dashboard() {
             <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
               Your Saved Documents
             </h3>
-            <div className="space-y-2 max-h-[42rem] overflow-y-auto">
+            <div className="max-h-[42rem] overflow-y-auto">
               {documents.length > 0 ? (
                 documents.map((doc) => (
                   <div 
                     key={doc._id} 
-                    className="flex items-center space-x-2 p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors group"
+                    className="flex items-center space-x-2 p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors group border-b"
                   >
                     <div 
                       className="flex items-center space-x-2 flex-1 cursor-pointer min-w-0"
                       onClick={() => handleDocumentClick(doc._id)}
                     >
-                      <FileText className="w-4 h-4 text-primary flex-shrink-0" />
+                      <FileText className="w-4 h-4 text-black flex-shrink-0" />
                       <div className="min-w-0 flex-1">
                         <div className="text-sm font-medium truncate">{doc.title}</div>
                         <div className="flex items-center space-x-2">
@@ -277,7 +288,7 @@ export default function Dashboard() {
                 variant="outline" 
                 size="sm" 
                 onClick={loadDocuments}
-                className="w-full text-xs"
+                className="border px-4 py-2 rounded-md hover:bg-gray-900 hover:text-white w-full"
               >
                 <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -294,41 +305,65 @@ export default function Dashboard() {
       {/* Main Content */}
       <div className="flex-1 p-8">
         {/* Header with Back to App button */}
-        <div className="flex justify-end mb-6">
-          <Button 
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              const currentUrl = window.location.href;
-              const url = new URL(currentUrl);
-              const mainDomain = `${url.protocol}//${url.hostname}${url.port ? ':' + url.port : ''}`;
-              window.location.href = mainDomain;
-            }}
-            className="text-xs"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to App
-          </Button>
-        </div>
+        
 
         {/* Template Categories */}
         <div className="max-w-6xl mx-auto">
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Document Templates</h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Click on any template to start editing. Templates are starting points - you can customize them and save as new documents.
-            </p>
+          <div className='flex justify-between gap-x-3 mb-5 md:flex-row flex-col-reverse items-start max-md:gap-y-3'>
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-1">Document Templates</h2>
+              <p className="text-gray-600 mb-6">
+                Click on any template to start editing. Templates are starting points - you can customize them and save as new documents.
+              </p>
+            </div>
+            <Button 
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const currentUrl = window.location.href;
+                const url = new URL(currentUrl);
+                const mainDomain = `${url.protocol}//${url.hostname}${url.port ? ':' + url.port : ''}`;
+                window.location.href = mainDomain;
+              }}
+              className="text-sm border px-4 py-2 rounded-md hover:bg-gray-900 hover:text-white"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to App
+            </Button>
           </div>
           
           <Tabs value={selectedCategory} onValueChange={(value: string) => setSelectedCategory(value)} className="w-full">
-            <TabsList className="flex w-full flex-wrap gap-2 mb-8 justify-center">
-              <TabsTrigger value="all" className="whitespace-nowrap px-4 py-2">All Templates</TabsTrigger>
-              <TabsTrigger value="job-applications" className="whitespace-nowrap px-4 py-2">Job Applications</TabsTrigger>
-              <TabsTrigger value="business-communications" className="whitespace-nowrap px-4 py-2">Business Communications</TabsTrigger>
-              <TabsTrigger value="reports-analysis" className="whitespace-nowrap px-4 py-2">Reports & Analysis</TabsTrigger>
-              <TabsTrigger value="creative-marketing" className="whitespace-nowrap px-4 py-2">Creative & Marketing</TabsTrigger>
-              <TabsTrigger value="customer-success" className="whitespace-nowrap px-4 py-2">Customer Success</TabsTrigger>
-            </TabsList>
+            {/* Desktop Tabs - Hidden on mobile */}
+            <div className="hidden md:block">
+              <TabsList className="flex w-full flex-wrap gap-2 mb-8 justify-center bg-white border rounded-md py-2 px-2 h-auto">
+                {categoryOptions.map((option) => (
+                  <TabsTrigger 
+                    key={option.value} 
+                    value={option.value} 
+                    className="whitespace-nowrap px-4 hover:bg-gray-200"
+                  >
+                    {option.label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </div>
+
+            {/* Mobile Select - Hidden on desktop */}
+            <div className="md:hidden mb-6">
+              <Select value={selectedCategory} onValueChange={(value: string) => setSelectedCategory(value)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a category" />
+                  {/* <ChevronDown className="h-4 w-4 opacity-50" /> */}
+                </SelectTrigger>
+                <SelectContent>
+                  {categoryOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             
             <TabsContent value={selectedCategory} className="mt-0">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">

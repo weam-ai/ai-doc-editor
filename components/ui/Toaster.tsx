@@ -40,8 +40,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={{ toasts, toast, removeToast }}>
       {children}
+      {toasts.map((toast) => (
       <div className="fixed top-0 right-0 z-[100] flex max-h-screen w-full flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col md:max-w-[420px]">
-        {toasts.map((toast) => (
           <div
             key={toast.id}
             className={`group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-md border p-6 pr-8 shadow-lg transition-all ${
@@ -61,8 +61,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               ×
             </button>
           </div>
-        ))}
       </div>
+      ))}
     </ToastContext.Provider>
   );
 }
