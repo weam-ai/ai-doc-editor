@@ -18,18 +18,95 @@ import Link from '@tiptap/extension-link';
 interface HtmlEditorProps {
   content: string;
   onChange: (content: string) => void;
+  editorRef?: React.RefObject<HTMLDivElement>;
+  onFontFamilyChange?: (fontFamily: string | null) => void;
 }
 
 interface PreserveStyleEditorProps {
   content: string;
   onChange: (content: string) => void;
+  editorRef?: React.RefObject<HTMLDivElement>;
+  onFontFamilyChange?: (fontFamily: string | null) => void;
+}
+
+interface ColorPickerProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSelectColor: (color: string) => void;
+  type: 'text' | 'background';
+}
+
+// Color picker component
+function ColorPicker({ isOpen, onClose, onSelectColor, type }: ColorPickerProps) {
+  const colors = [
+    '#000000', '#404040', '#808080', '#C0C0C0', '#E0E0E0', '#FFFFFF',
+    '#FFFFE0', '#FFE4E1', '#FFB6C1', '#E6E6FA', '#E0F6FF', '#F0FFF0',
+    '#FFFF00', '#FFA500', '#FF0000', '#800080', '#0000FF', '#008000',
+    '#808000', '#8B4513', '#8B0000', '#4B0082', '#000080', '#006400'
+  ];
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+      <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold">
+            {type === 'text' ? 'Text Color' : 'Background Color'}
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700 text-xl"
+          >
+            ×
+          </button>
+        </div>
+        
+        <div className="grid grid-cols-6 gap-2 mb-4">
+          {colors.map((color) => (
+            <button
+              key={color}
+              onClick={() => {
+                onSelectColor(color);
+                onClose();
+              }}
+              className="w-10 h-10 rounded border-2 border-gray-200 hover:border-gray-400 transition-colors"
+              style={{ backgroundColor: color }}
+              title={color}
+            />
+          ))}
+        </div>
+        
+        <div className="flex gap-2">
+          <input
+            type="color"
+            onChange={(e) => {
+              onSelectColor(e.target.value);
+              onClose();
+            }}
+            className="flex-1 h-10 border border-gray-300 rounded cursor-pointer"
+          />
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // Simple contentEditable editor that preserves all inline styles perfectly
-function PreserveStyleEditor({ content, onChange }: PreserveStyleEditorProps) {
-  const editorRef = useRef<HTMLDivElement>(null);
+function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, onFontFamilyChange }: PreserveStyleEditorProps) {
+  const internalEditorRef = useRef<HTMLDivElement>(null);
+  const editorRef = externalEditorRef || internalEditorRef;
   const [isEditing, setIsEditing] = useState(false);
   const debounceTimeoutRef = useRef<NodeJS.Timeout>();
+  const [colorPickerOpen, setColorPickerOpen] = useState(false);
+  const [colorPickerType, setColorPickerType] = useState<'text' | 'background'>('text');
+  const [pendingRange, setPendingRange] = useState<Range | null>(null);
   
   // Set initial content when component mounts or content prop changes from external source
   useEffect(() => {
@@ -156,108 +233,242 @@ function PreserveStyleEditor({ content, onChange }: PreserveStyleEditorProps) {
   };
 
   // Function to apply formatting using a saved range
-  const applyFormattingWithRange = (format: string, savedRange: Range | null) => {
-    console.log('Applying formatting with range:', format, savedRange);
+  // const applyFormattingWithRange = (format: string, savedRange: Range | null) => {
+  //   console.log('Applying formatting with range:', format, savedRange);
     
-    if (!savedRange) {
-      console.log('No saved range available');
-      return;
-    }
+  //   if (!savedRange) {
+  //     console.log('No saved range available');
+  //     return;
+  //   }
     
-    if (savedRange.collapsed) {
-      console.log('Saved range is collapsed, no text selected');
-      return;
-    }
+  //   if (savedRange.collapsed) {
+  //     console.log('Saved range is collapsed, no text selected');
+  //     return;
+  //   }
     
-    // Ensure the editor is focused
-    if (editorRef.current) {
-      editorRef.current.focus();
-    }
+  //   // Validate that the range is still valid
+  //   try {
+  //     const testRange = savedRange.cloneRange();
+  //     const testText = testRange.toString();
+  //     if (!testText || testText.trim() === '') {
+  //       console.log('Range contains no text');
+  //       return;
+  //     }
+  //   } catch (error) {
+  //     console.log('Range is invalid:', error);
+  //     return;
+  //   }
     
-    // Create a new range from the saved range to avoid issues
-    const newRange = document.createRange();
-    newRange.setStart(savedRange.startContainer, savedRange.startOffset);
-    newRange.setEnd(savedRange.endContainer, savedRange.endOffset);
+  //   // Ensure the editor is focused
+  //   if (editorRef.current) {
+  //     editorRef.current.focus();
+  //   }
     
-    // Restore the selection
-    const selection = window.getSelection();
-    if (selection) {
-      selection.removeAllRanges();
-      selection.addRange(newRange);
-    }
+  //   // Create a new range from the saved range to avoid issues
+  //   const newRange = document.createRange();
+  //   newRange.setStart(savedRange.startContainer, savedRange.startOffset);
+  //   newRange.setEnd(savedRange.endContainer, savedRange.endOffset);
     
-    // Determine the tag name for the format
-    let tagName: string;
-    switch (format) {
-      case 'bold':
-        tagName = 'strong';
-        break;
-      case 'italic':
-        tagName = 'em';
-        break;
-      case 'underline':
-        tagName = 'u';
-        break;
-      case 'strikethrough':
-        tagName = 's';
-        break;
-      default:
-        return;
-    }
+  //   // Restore the selection
+  //   const selection = window.getSelection();
+  //   if (selection) {
+  //     selection.removeAllRanges();
+  //     selection.addRange(newRange);
+  //   }
+    
+  //   // Determine the tag name for the format
+  //   let tagName: string;
+  //   switch (format) {
+  //     case 'bold':
+  //       tagName = 'strong';
+  //       break;
+  //     case 'italic':
+  //       tagName = 'em';
+  //       break;
+  //     case 'underline':
+  //       tagName = 'u';
+  //       break;
+  //     case 'strikethrough':
+  //       tagName = 's';
+  //       break;
+  //     default:
+  //       return;
+  //   }
 
-    // Check if the text is already formatted with this tag
-    if (isTextFormatted(newRange, tagName)) {
-      console.log('Text is already formatted, removing formatting');
-      // Remove the formatting
-      if (removeFormatting(newRange, tagName)) {
-        // Trigger input event to update content
-        const inputEvent = new Event('input', { bubbles: true });
-        if (editorRef.current) {
-          editorRef.current.dispatchEvent(inputEvent);
-        }
-        return;
+  //   // Check if the text is already formatted with this tag
+  //   if (isTextFormatted(newRange, tagName)) {
+  //     console.log('Text is already formatted, removing formatting');
+  //     // Remove the formatting
+  //     if (removeFormatting(newRange, tagName)) {
+  //       // Trigger input event to update content
+  //       const inputEvent = new Event('input', { bubbles: true });
+  //       if (editorRef.current) {
+  //         editorRef.current.dispatchEvent(inputEvent);
+  //       }
+  //       return;
+  //     }
+  //   }
+
+  //   // Create the appropriate element based on format
+  //   let element: HTMLElement;
+  //   switch (format) {
+  //     case 'bold':
+  //       element = document.createElement('strong');
+  //       break;
+  //     case 'italic':
+  //       element = document.createElement('em');
+  //       break;
+  //     case 'underline':
+  //       element = document.createElement('u');
+  //       break;
+  //     case 'strikethrough':
+  //       element = document.createElement('s');
+  //       break;
+  //     default:
+  //       return;
+  //   }
+
+  //   // Extract the selected content and wrap it
+  //   const contents = newRange.extractContents();
+  //   element.appendChild(contents);
+  //   newRange.insertNode(element);
+
+  //   // Clear selection and set cursor after the element
+  //   if (selection) {
+  //     selection.removeAllRanges();
+  //     const cursorRange = document.createRange();
+  //     cursorRange.setStartAfter(element);
+  //     cursorRange.setEndAfter(element);
+  //     selection.addRange(cursorRange);
+  //   }
+
+  //   // Trigger input event to update content
+  //   const inputEvent = new Event('input', { bubbles: true });
+  //   if (editorRef.current) {
+  //     editorRef.current.dispatchEvent(inputEvent);
+  //   }
+  // };
+
+  const applyFormattingWithRange = (format: string, savedRange: Range | null) => {
+    if (!savedRange || savedRange.collapsed) return;
+    if (!editorRef.current) return;
+  
+    const selection = window.getSelection();
+    if (!selection) return;
+  
+    let tagName: keyof HTMLElementTagNameMap;
+    switch (format) {
+      case "bold": tagName = "strong"; break;
+      case "italic": tagName = "em"; break;
+      case "underline": tagName = "u"; break;
+      case "strikethrough": tagName = "s"; break;
+      default: return;
+    }
+  
+    const range = savedRange.cloneRange();
+    const walker = document.createTreeWalker(editorRef.current, NodeFilter.SHOW_TEXT, null);
+    const textNodes: Text[] = [];
+  
+    while (walker.nextNode()) {
+      const node = walker.currentNode as Text;
+      
+      // Skip empty text nodes (whitespace only)
+      if (!node.textContent || node.textContent.trim() === '') {
+        continue;
+      }
+  
+      const nodeRange = document.createRange();
+      nodeRange.selectNodeContents(node);
+  
+      // Check if node actually intersects with the selection
+      // A node intersects if it's not completely before or after the selection
+      const startComparison = range.compareBoundaryPoints(Range.START_TO_END, nodeRange);
+      const endComparison = range.compareBoundaryPoints(Range.END_TO_START, nodeRange);
+      
+      if (startComparison > 0 && endComparison < 0) {
+        textNodes.push(node);
+      }
+    }
+  
+    // Check if all selected text is already wrapped with the same tag
+    let allTextAlreadyWrapped = true;
+    for (const textNode of textNodes) {
+      const parent = textNode.parentNode as HTMLElement;
+      if (parent.nodeName.toLowerCase() !== tagName) {
+        allTextAlreadyWrapped = false;
+        break;
       }
     }
 
-    // Create the appropriate element based on format
-    let element: HTMLElement;
-    switch (format) {
-      case 'bold':
-        element = document.createElement('strong');
-        break;
-      case 'italic':
-        element = document.createElement('em');
-        break;
-      case 'underline':
-        element = document.createElement('u');
-        break;
-      case 'strikethrough':
-        element = document.createElement('s');
-        break;
-      default:
-        return;
+    if (allTextAlreadyWrapped && textNodes.length > 0) {
+      // Remove formatting - unwrap all the selected text
+      textNodes.forEach((textNode) => {
+        const parent = textNode.parentNode as HTMLElement;
+        if (parent.nodeName.toLowerCase() === tagName) {
+          const grandParent = parent.parentNode;
+          if (grandParent) {
+            // Move all children of the wrapper to its parent
+            while (parent.firstChild) {
+              grandParent.insertBefore(parent.firstChild, parent);
+            }
+            // Remove the empty wrapper
+            grandParent.removeChild(parent);
+          }
+        }
+      });
+    } else {
+      // Apply formatting - wrap the selected text
+      textNodes.forEach((textNode) => {
+        const parent = textNode.parentNode as HTMLElement;
+        if (parent.nodeName.toLowerCase() === tagName) return;
+  
+        const startOffset = textNode === range.startContainer ? range.startOffset : 0;
+        const endOffset = textNode === range.endContainer ? range.endOffset : textNode.textContent!.length;
+  
+        if (startOffset === 0 && endOffset === textNode.textContent!.length) {
+          const wrapper = document.createElement(tagName);
+          parent.replaceChild(wrapper, textNode);
+          wrapper.appendChild(textNode);
+        } else {
+          const before = textNode.textContent!.slice(0, startOffset);
+          const selected = textNode.textContent!.slice(startOffset, endOffset);
+          const after = textNode.textContent!.slice(endOffset);
+  
+          if (before) parent.insertBefore(document.createTextNode(before), textNode);
+  
+          const wrapper = document.createElement(tagName);
+          wrapper.appendChild(document.createTextNode(selected));
+          parent.insertBefore(wrapper, textNode);
+  
+          if (after) parent.insertBefore(document.createTextNode(after), textNode);
+  
+          parent.removeChild(textNode);
+        }
+      });
     }
-
-    // Extract the selected content and wrap it
-    const contents = newRange.extractContents();
-    element.appendChild(contents);
-    newRange.insertNode(element);
-
-    // Clear selection and set cursor after the element
-    if (selection) {
-      selection.removeAllRanges();
+  
+    // Restore cursor - find the last created wrapper element
+    if (textNodes.length > 0) {
       const cursorRange = document.createRange();
-      cursorRange.setStartAfter(element);
-      cursorRange.setEndAfter(element);
+      
+      // Find the last wrapper element that was created
+      const lastWrapper = editorRef.current.querySelector(`${tagName}:last-of-type`);
+      
+      if (lastWrapper) {
+        cursorRange.setStartAfter(lastWrapper);
+        cursorRange.setEndAfter(lastWrapper);
+      } else {
+        // Fallback: set cursor at the end of the range
+        cursorRange.setStart(range.endContainer, range.endOffset);
+        cursorRange.setEnd(range.endContainer, range.endOffset);
+      }
+      
+      // selection.removeAllRanges();
       selection.addRange(cursorRange);
     }
-
-    // Trigger input event to update content
-    const inputEvent = new Event('input', { bubbles: true });
-    if (editorRef.current) {
-      editorRef.current.dispatchEvent(inputEvent);
-    }
-  };
+  
+    editorRef.current.dispatchEvent(new Event("input", { bubbles: true }));
+  };   
 
   // Store the last selection globally
   const lastSelectionRef = useRef<Range | null>(null);
@@ -269,18 +480,31 @@ function PreserveStyleEditor({ content, onChange }: PreserveStyleEditorProps) {
       const selection = window.getSelection();
       if (selection && selection.rangeCount > 0) {
         const range = selection.getRangeAt(0);
-        // Only store non-collapsed selections
-        if (!range.collapsed && editorRef.current && editorRef.current.contains(range.commonAncestorContainer)) {
+        // Store both collapsed and non-collapsed selections, but prioritize non-collapsed
+        if (editorRef.current && editorRef.current.contains(range.commonAncestorContainer)) {
           lastSelectionRef.current = range.cloneRange();
           lastSelectedTextRef.current = range.toString();
-          console.log('Stored selection:', range.toString());
+          console.log('Stored selection:', range.toString(), 'Collapsed:', range.collapsed);
+          
+          // Check for font family changes and notify parent
+          if (onFontFamilyChange) {
+            if (!range.collapsed) {
+              const currentFontFamily = getCurrentFontFamily();
+              console.log('Selection change - font family detected:', currentFontFamily);
+              onFontFamilyChange(currentFontFamily);
+            } else {
+              // No text selected, reset font family
+              console.log('Selection change - no text selected, resetting font family');
+              onFontFamilyChange(null);
+            }
+          }
         }
       }
     };
 
     document.addEventListener('selectionchange', handleSelectionChange);
     return () => document.removeEventListener('selectionchange', handleSelectionChange);
-  }, []);
+  }, [onFontFamilyChange]);
 
   // Function to apply text alignment
   const applyAlignment = (alignment: string, savedRange: Range | null) => {
@@ -300,22 +524,56 @@ function PreserveStyleEditor({ content, onChange }: PreserveStyleEditorProps) {
       selection.addRange(newRange);
     }
     
-    // Find the containing block element
-    let blockElement: Node | null = newRange.commonAncestorContainer;
-    while (blockElement && blockElement.nodeType !== Node.ELEMENT_NODE) {
-      blockElement = blockElement.parentNode;
+    // Find the most specific element that contains the selected text
+    let targetElement: HTMLElement | null = null;
+    
+    // Get all elements in the editor
+    const allElements = editorRef.current?.querySelectorAll('h1, h2, h3, h4, h5, h6, p, div, span, li') || [];
+    const elementsArray = Array.from(allElements);
+    
+    // Find the element that contains the selection and has the highest specificity
+    for (const element of elementsArray) {
+      const htmlElement = element as HTMLElement;
+      
+      // Check if this element contains the selected text
+      if (newRange.intersectsNode(htmlElement)) {
+        // Check if this element is more specific than the current target
+        if (!targetElement || isMoreSpecific(htmlElement, targetElement)) {
+          targetElement = htmlElement;
+        }
+      }
     }
     
-    if (blockElement) {
-      // Find the nearest block-level element
-      while (blockElement && !['P', 'DIV', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'LI'].includes(blockElement.nodeName)) {
-        blockElement = blockElement.parentNode;
-      }
-      
-      if (blockElement) {
-        (blockElement as HTMLElement).style.textAlign = alignment;
+    // If no specific element found, fall back to the direct parent of the text node
+    if (!targetElement) {
+      if (newRange.startContainer.nodeType === Node.TEXT_NODE) {
+        targetElement = newRange.startContainer.parentElement;
       }
     }
+    
+    // Apply text-align style to the target element
+    if (targetElement) {
+      targetElement.style.textAlign = alignment;
+    }
+  };
+  
+  // Helper function to determine if one element is more specific than another
+  const isMoreSpecific = (element1: HTMLElement, element2: HTMLElement): boolean => {
+    const tagPriority: { [key: string]: number } = {
+      'H1': 10, 'H2': 10, 'H3': 10, 'H4': 10, 'H5': 10, 'H6': 10,
+      'P': 8, 'SPAN': 6, 'LI': 7, 'DIV': 1
+    };
+    
+    const priority1 = tagPriority[element1.tagName] || 0;
+    const priority2 = tagPriority[element2.tagName] || 0;
+    
+    // Higher priority is more specific
+    if (priority1 !== priority2) {
+      return priority1 > priority2;
+    }
+    
+    // If same priority, prefer the one that's deeper in the DOM tree
+    return element1.contains(element2);
   };
 
   // Function to apply lists
@@ -493,80 +751,333 @@ function PreserveStyleEditor({ content, onChange }: PreserveStyleEditorProps) {
   const applyColor = (savedRange: Range | null) => {
     if (!savedRange || savedRange.collapsed) return;
     
-    const color = prompt('Enter color (e.g., #ff0000 or red):');
-    if (!color) return;
+    setPendingRange(savedRange);
+    setColorPickerType('text');
+    setColorPickerOpen(true);
+  };
+
+  // Function to handle color selection
+  const handleColorSelection = (color: string) => {
+    if (!pendingRange) {
+      console.warn('No pending range for color selection');
+      return;
+    }
+    
+    if (!color || typeof color !== 'string') {
+      console.warn('Invalid color value:', color);
+      return;
+    }
     
     if (editorRef.current) {
       editorRef.current.focus();
     }
     
-    const newRange = document.createRange();
-    newRange.setStart(savedRange.startContainer, savedRange.startOffset);
-    newRange.setEnd(savedRange.endContainer, savedRange.endOffset);
-    
-    const selection = window.getSelection();
-    if (selection) {
-      selection.removeAllRanges();
-      selection.addRange(newRange);
+    try {
+      // First, let's try to get a better range by using the current selection
+      const currentSelection = window.getSelection();
+      let workingRange = null;
+      
+      if (currentSelection && currentSelection.rangeCount > 0) {
+        const currentRange = currentSelection.getRangeAt(0);
+        if (!currentRange.collapsed && editorRef.current && editorRef.current.contains(currentRange.commonAncestorContainer)) {
+          workingRange = currentRange.cloneRange();
+          console.log('Using current selection range:', workingRange.toString());
+        }
+      }
+      
+      // If no current selection, use the pending range
+      if (!workingRange) {
+        workingRange = document.createRange();
+        workingRange.setStart(pendingRange.startContainer, pendingRange.startOffset);
+        workingRange.setEnd(pendingRange.endContainer, pendingRange.endOffset);
+        console.log('Using pending range:', workingRange.toString());
+      }
+      
+      // Debug: Check the range content before extraction
+      console.log('Range content before extraction:', workingRange.toString());
+      console.log('Range start container:', workingRange.startContainer);
+      console.log('Range end container:', workingRange.endContainer);
+      console.log('Range collapsed:', workingRange.collapsed);
+      
+      // If range is collapsed or empty, try to find the text in the editor
+      if (workingRange.collapsed || !workingRange.toString().trim()) {
+        console.log('Range is collapsed or empty, trying to find text in editor');
+        const editorText = editorRef.current?.textContent || '';
+        const selectedText = lastSelectedTextRef.current;
+        
+        if (selectedText && editorText.includes(selectedText)) {
+          // Try to find and select the text
+          const foundRange = findAndSelectText(selectedText);
+          if (foundRange) {
+            workingRange = foundRange;
+            console.log('Found text with fallback:', workingRange.toString());
+          }
+        }
+      }
+      
+      // If still no valid range, return
+      if (workingRange.collapsed || !workingRange.toString().trim()) {
+        console.log('No valid range found for color application');
+        return;
+      }
+      
+      const selection = window.getSelection();
+      if (selection) {
+        selection.removeAllRanges();
+        selection.addRange(workingRange);
+      }
+      
+      const span = document.createElement('span');
+      if (colorPickerType === 'text') {
+        span.style.color = color;
+      } else {
+        span.style.backgroundColor = color;
+      }
+      
+      // Debug: Check span before adding content
+      console.log('Created span:', span.outerHTML);
+      
+      // Try using surroundContents which is designed for wrapping selected content
+      try {
+        workingRange.surroundContents(span);
+        console.log('Successfully surrounded contents with span:', span.outerHTML);
+      } catch (surroundError) {
+        console.log('surroundContents failed, trying alternative method:', surroundError);
+        
+        // Alternative method: Use execCommand for color
+        try {
+          // First, ensure the range is selected
+          const selection = window.getSelection();
+          if (selection) {
+            selection.removeAllRanges();
+            selection.addRange(workingRange);
+          }
+          
+          // Use execCommand to apply color
+          if (colorPickerType === 'text') {
+            document.execCommand('foreColor', false, color);
+          } else {
+            document.execCommand('backColor', false, color);
+          }
+          
+          console.log('Applied color using execCommand');
+        } catch (execError) {
+          console.log('execCommand failed, falling back to extractContents:', execError);
+          
+          // Final fallback to extractContents method
+          const contents = workingRange.extractContents();
+          console.log('Extracted contents:', contents);
+          console.log('Extracted contents text:', contents.textContent);
+          
+          span.appendChild(contents);
+          console.log('Span after adding contents:', span.outerHTML);
+          
+          workingRange.insertNode(span);
+          console.log('Span inserted into range');
+        }
+      }
+      
+      // Clear the selection after applying color
+      if (selection) {
+        selection.removeAllRanges();
+      }
+      
+      // Trigger content update to notify parent component
+      if (editorRef.current) {
+        const newContent = editorRef.current.innerHTML;
+        onChange(newContent);
+        console.log('Color applied successfully:', colorPickerType, color);
+        
+        // Debug: Check the actual DOM structure
+        console.log('Updated content HTML:', newContent);
+        
+        // Debug: Check if the span with color was actually created
+        const spans = editorRef.current.querySelectorAll('span[style*="color"], span[style*="background-color"]');
+        console.log('Found colored spans:', spans.length);
+        spans.forEach((span, index) => {
+          console.log(`Span ${index}:`, span.outerHTML);
+        });
+      }
+      
+    } catch (error) {
+      console.error('Error applying color:', error);
+    } finally {
+      setPendingRange(null);
     }
-    
-    const span = document.createElement('span');
-    span.style.color = color;
-    span.appendChild(newRange.extractContents());
-    newRange.insertNode(span);
   };
 
   // Function to apply text highlight
   const applyHighlight = (savedRange: Range | null) => {
     if (!savedRange || savedRange.collapsed) return;
     
-    const highlightColor = prompt('Enter highlight color (e.g., #ffff00 or yellow):');
-    if (!highlightColor) return;
-    
-    if (editorRef.current) {
-      editorRef.current.focus();
-    }
-    
-    const newRange = document.createRange();
-    newRange.setStart(savedRange.startContainer, savedRange.startOffset);
-    newRange.setEnd(savedRange.endContainer, savedRange.endOffset);
-    
-    const selection = window.getSelection();
-    if (selection) {
-      selection.removeAllRanges();
-      selection.addRange(newRange);
-    }
-    
-    const span = document.createElement('span');
-    span.style.backgroundColor = highlightColor;
-    span.appendChild(newRange.extractContents());
-    newRange.insertNode(span);
+    setPendingRange(savedRange);
+    setColorPickerType('background');
+    setColorPickerOpen(true);
   };
 
   // Function to apply font size
   const applyFontSize = (value: string | undefined, savedRange: Range | null) => {
     if (!value) return;
-    
-    if (savedRange && !savedRange.collapsed) {
-      if (editorRef.current) {
-        editorRef.current.focus();
+    if (!savedRange || savedRange.collapsed) return;
+    if (!editorRef.current) return;
+  
+    const selection = window.getSelection();
+    if (!selection) return;
+  
+    const range = savedRange.cloneRange();
+    const walker = document.createTreeWalker(editorRef.current, NodeFilter.SHOW_TEXT, null);
+    const textNodes: Text[] = [];
+  
+    while (walker.nextNode()) {
+      const node = walker.currentNode as Text;
+      
+      // Skip empty text nodes (whitespace only)
+      if (!node.textContent || node.textContent.trim() === '') {
+        continue;
       }
+  
+      const nodeRange = document.createRange();
+      nodeRange.selectNodeContents(node);
+  
+      // Check if node actually intersects with the selection
+      // A node intersects if it's not completely before or after the selection
+      const startComparison = range.compareBoundaryPoints(Range.START_TO_END, nodeRange);
+      const endComparison = range.compareBoundaryPoints(Range.END_TO_START, nodeRange);
       
-      const newRange = document.createRange();
-      newRange.setStart(savedRange.startContainer, savedRange.startOffset);
-      newRange.setEnd(savedRange.endContainer, savedRange.endOffset);
-      
-      const selection = window.getSelection();
-      if (selection) {
-        selection.removeAllRanges();
-        selection.addRange(newRange);
+      if (startComparison > 0 && endComparison < 0) {
+        textNodes.push(node);
       }
-      
-      const span = document.createElement('span');
-      span.style.fontSize = value;
-      span.appendChild(newRange.extractContents());
-      newRange.insertNode(span);
     }
+  
+    // Check if all selected text is already wrapped with a span that has the same font size
+    let allTextAlreadyWrapped = true;
+    for (const textNode of textNodes) {
+      const parent = textNode.parentNode as HTMLElement;
+      if (parent.nodeName.toLowerCase() !== 'span' || parent.style.fontSize !== value) {
+        allTextAlreadyWrapped = false;
+        break;
+      }
+    }
+
+    if (allTextAlreadyWrapped && textNodes.length > 0) {
+      // Remove font size formatting - unwrap all the selected text
+      textNodes.forEach((textNode) => {
+        const parent = textNode.parentNode as HTMLElement;
+        if (parent.nodeName.toLowerCase() === 'span' && parent.style.fontSize === value) {
+          const grandParent = parent.parentNode;
+          if (grandParent) {
+            // Move all children of the wrapper to its parent
+            while (parent.firstChild) {
+              grandParent.insertBefore(parent.firstChild, parent);
+            }
+            // Remove the empty wrapper
+            grandParent.removeChild(parent);
+          }
+        }
+      });
+    } else {
+      // Apply font size formatting - wrap the selected text
+      textNodes.forEach((textNode) => {
+        const parent = textNode.parentNode as HTMLElement;
+        
+        // Check if already wrapped with span with same font size
+        if (parent.nodeName.toLowerCase() === 'span' && parent.style.fontSize === value) return;
+  
+        const startOffset = textNode === range.startContainer ? range.startOffset : 0;
+        const endOffset = textNode === range.endContainer ? range.endOffset : textNode.textContent!.length;
+  
+        if (startOffset === 0 && endOffset === textNode.textContent!.length) {
+          const wrapper = document.createElement('span');
+          wrapper.style.fontSize = value;
+          parent.replaceChild(wrapper, textNode);
+          wrapper.appendChild(textNode);
+        } else {
+          const before = textNode.textContent!.slice(0, startOffset);
+          const selected = textNode.textContent!.slice(startOffset, endOffset);
+          const after = textNode.textContent!.slice(endOffset);
+  
+          if (before) parent.insertBefore(document.createTextNode(before), textNode);
+  
+          const wrapper = document.createElement('span');
+          wrapper.style.fontSize = value;
+          wrapper.appendChild(document.createTextNode(selected));
+          parent.insertBefore(wrapper, textNode);
+  
+          if (after) parent.insertBefore(document.createTextNode(after), textNode);
+  
+          parent.removeChild(textNode);
+        }
+      });
+    }
+  
+    // Restore cursor - find the last created wrapper element
+    if (textNodes.length > 0) {
+      const cursorRange = document.createRange();
+      
+      // Find the last wrapper element that was created
+      const lastWrapper = editorRef.current.querySelector(`span[style*="font-size: ${value}"]:last-of-type`);
+      
+      if (lastWrapper) {
+        cursorRange.setStartAfter(lastWrapper);
+        cursorRange.setEndAfter(lastWrapper);
+      } else {
+        // Fallback: set cursor at the end of the range
+        cursorRange.setStart(range.endContainer, range.endOffset);
+        cursorRange.setEnd(range.endContainer, range.endOffset);
+      }
+      
+      selection.removeAllRanges();
+      selection.addRange(cursorRange);
+    }
+  
+    editorRef.current.dispatchEvent(new Event("input", { bubbles: true }));
+  };
+
+  // Function to get current font family of selected text
+  const getCurrentFontFamily = (): string | null => {
+    if (!editorRef.current) return null;
+    
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return null;
+    
+    const range = selection.getRangeAt(0);
+    if (range.collapsed) return null;
+    
+    // Find the first text node in the selection
+    const walker = document.createTreeWalker(editorRef.current, NodeFilter.SHOW_TEXT, null);
+    const textNodes: Text[] = [];
+    
+    while (walker.nextNode()) {
+      const node = walker.currentNode as Text;
+      if (!node.textContent || node.textContent.trim() === '') continue;
+      
+      const nodeRange = document.createRange();
+      nodeRange.selectNodeContents(node);
+      
+      const startComparison = range.compareBoundaryPoints(Range.START_TO_END, nodeRange);
+      const endComparison = range.compareBoundaryPoints(Range.END_TO_START, nodeRange);
+      
+      if (startComparison > 0 && endComparison < 0) {
+        textNodes.push(node);
+        break; // Get the first text node
+      }
+    }
+    
+    if (textNodes.length === 0) return null;
+    
+    // Check the parent elements for font-family style
+    let element = textNodes[0].parentElement;
+    while (element && element !== editorRef.current) {
+      if (element.style.fontFamily) {
+        const fontFamily = element.style.fontFamily;
+        console.log('Found font family:', fontFamily);
+        return fontFamily;
+      }
+      element = element.parentElement;
+    }
+    
+    console.log('No font family found for selected text');
+    return null;
   };
 
   // Function to apply font family
@@ -592,6 +1103,12 @@ function PreserveStyleEditor({ content, onChange }: PreserveStyleEditorProps) {
       span.style.fontFamily = value;
       span.appendChild(newRange.extractContents());
       newRange.insertNode(span);
+      
+      // Notify parent of font family change
+      if (onFontFamilyChange) {
+        console.log('Applying font family:', value);
+        onFontFamilyChange(value);
+      }
     }
   };
 
@@ -646,28 +1163,101 @@ function PreserveStyleEditor({ content, onChange }: PreserveStyleEditorProps) {
   };
 
   // Fallback function to find and select text
-  const findAndSelectText = (text: string) => {
-    if (!editorRef.current || !text) return null;
+  // const findAndSelectText = (text: string) => {
+  //   if (!editorRef.current || !text || text.trim() === '') return null;
     
+  //   const walker = document.createTreeWalker(
+  //     editorRef.current,
+  //     NodeFilter.SHOW_TEXT,
+  //     null
+  //   );
+    
+  //   let node;
+  //   while (node = walker.nextNode()) {
+  //     const textContent = node.textContent || '';
+  //     const index = textContent.indexOf(text);
+  //     if (index !== -1) {
+  //       const range = document.createRange();
+  //       range.setStart(node, index);
+  //       range.setEnd(node, index + text.length);
+        
+  //       // Validate the range
+  //       try {
+  //         const testText = range.toString();
+  //         if (testText === text) {
+  //           console.log('Found and validated text:', testText);
+  //           return range;
+  //         }
+  //       } catch (error) {
+  //         console.log('Error validating range:', error);
+  //         continue;
+  //       }
+  //     }
+  //   }
+  //   return null;
+  // };
+
+  const findAndSelectText = (text: string): Range | null => {
+    if (!editorRef.current || !text.trim()) return null;
+  
     const walker = document.createTreeWalker(
       editorRef.current,
       NodeFilter.SHOW_TEXT,
       null
     );
-    
-    let node;
-    while (node = walker.nextNode()) {
-      const textContent = node.textContent || '';
-      const index = textContent.indexOf(text);
-      if (index !== -1) {
-        const range = document.createRange();
-        range.setStart(node, index);
-        range.setEnd(node, index + text.length);
-        return range;
+  
+    let fullText = '';
+    const nodeMap: { node: Node; start: number; end: number }[] = [];
+  
+    let node: Node | null;
+    while ((node = walker.nextNode())) {
+      const nodeText = node.textContent ?? '';
+      const start = fullText.length;
+      const end = start + nodeText.length;
+      nodeMap.push({ node, start, end });
+      fullText += nodeText;
+    }
+  
+    // Search in combined text
+    const index = fullText.indexOf(text);
+    if (index === -1) return null;
+  
+    // Find start node + offset
+    let startNode: Node | null = null;
+    let startOffset = 0;
+    let endNode: Node | null = null;
+    let endOffset = 0;
+  
+    for (const entry of nodeMap) {
+      if (!startNode && index >= entry.start && index < entry.end) {
+        startNode = entry.node;
+        startOffset = index - entry.start;
+      }
+      if (index + text.length > entry.start && index + text.length <= entry.end) {
+        endNode = entry.node;
+        endOffset = index + text.length - entry.start;
+        break;
       }
     }
+  
+    if (startNode && endNode) {
+      const range = document.createRange();
+      range.setStart(startNode, startOffset);
+      range.setEnd(endNode, endOffset);
+  
+      // Optional: select it
+      const selection = window.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+  
+      console.log('Found and selected text:', range.toString());
+      return range;
+    }
+  
     return null;
   };
+  
+  
 
   // Listen for toolbar actions
   useEffect(() => {
@@ -677,86 +1267,121 @@ function PreserveStyleEditor({ content, onChange }: PreserveStyleEditorProps) {
       
       const { action, value } = event.detail;
       
-      // Use the last stored selection
-      let savedRange = lastSelectionRef.current;
-      console.log('Using stored range:', savedRange ? savedRange.toString() : 'none', 'Collapsed:', savedRange ? savedRange.collapsed : 'N/A');
+      // Force focus to the editor to ensure we can capture selection
+      editorRef.current.focus();
       
-      // If no valid range, try to find the last selected text
-      if (!savedRange || savedRange.collapsed) {
-        console.log('Trying fallback - finding text:', lastSelectedTextRef.current);
-        savedRange = findAndSelectText(lastSelectedTextRef.current);
-        if (savedRange) {
-          console.log('Found text with fallback:', savedRange.toString());
+      // Use a small delay to ensure focus is set and selection is available
+      setTimeout(() => {
+        // Immediately capture the current selection before any async operations
+        const currentSelection = window.getSelection();
+        let savedRange: Range | null = null;
+        
+        // Check if there's a current valid selection
+        if (currentSelection && currentSelection.rangeCount > 0) {
+          const currentRange = currentSelection.getRangeAt(0);
+          if (!currentRange.collapsed && editorRef.current && editorRef.current.contains(currentRange.commonAncestorContainer)) {
+            savedRange = currentRange.cloneRange();
+            console.log('Using current selection:', savedRange.toString());
+          }
         }
-      }
-      
-      // Apply formatting with saved selection
-      switch (action) {
-        case 'bold':
-          applyFormattingWithRange('bold', savedRange);
-          break;
-        case 'italic':
-          applyFormattingWithRange('italic', savedRange);
-          break;
-        case 'underline':
-          applyFormattingWithRange('underline', savedRange);
-          break;
-        case 'strikethrough':
-          applyFormattingWithRange('strikethrough', savedRange);
-          break;
-        case 'align-left':
-          applyAlignment('left', savedRange);
-          break;
-        case 'align-center':
-          applyAlignment('center', savedRange);
-          break;
-        case 'align-right':
-          applyAlignment('right', savedRange);
-          break;
-        case 'align-justify':
-          applyAlignment('justify', savedRange);
-          break;
-        case 'bullet-list':
-          applyList('ul', savedRange);
-          break;
-        case 'ordered-list':
-          applyList('ol', savedRange);
-          break;
-        case 'link':
-          applyLink(savedRange);
-          break;
-        case 'unlink':
-          removeLink(savedRange);
-          break;
-        case 'image':
-          insertImage(savedRange);
-          break;
-        case 'table':
-          insertTable(savedRange);
-          break;
-        case 'color':
-          applyColor(savedRange);
-          break;
-        case 'highlight':
-          applyHighlight(savedRange);
-          break;
-        case 'font-size':
-          applyFontSize(value, savedRange);
-          break;
-        case 'font-family':
-          applyFontFamily(value, savedRange);
-          break;
-        case 'heading':
-          applyHeading(value, savedRange);
-          break;
-        case 'paragraph':
-          applyParagraph(savedRange);
-          break;
-      }
-      
-      // Trigger input event to update content
-      const inputEvent = new Event('input', { bubbles: true });
-      editorRef.current.dispatchEvent(inputEvent);
+        
+        // If no current selection, try the stored selection
+        if (!savedRange) {
+          savedRange = lastSelectionRef.current;
+          console.log('Using stored range:', savedRange ? savedRange.toString() : 'none', 'Collapsed:', savedRange ? savedRange.collapsed : 'N/A');
+        }
+        
+        // If still no valid range, try to find the last selected text
+        if (!savedRange || savedRange.collapsed) {
+          console.log('Trying fallback - finding text:', lastSelectedTextRef.current);
+          savedRange = findAndSelectText(lastSelectedTextRef.current);
+          if (savedRange) {
+            console.log('Found text with fallback:', savedRange.toString());
+          }
+        }
+        
+        // If we still don't have a range, try to get any selection within the editor
+        if (!savedRange || savedRange.collapsed) {
+          console.log('No valid range found, checking for any selection in editor');
+          if (currentSelection && currentSelection.rangeCount > 0) {
+            const currentRange = currentSelection.getRangeAt(0);
+            if (editorRef.current && editorRef.current.contains(currentRange.commonAncestorContainer)) {
+              savedRange = currentRange.cloneRange();
+              console.log('Using any selection in editor:', savedRange.toString());
+            }
+          }
+        }
+        
+        // Apply formatting with saved selection
+        switch (action) {
+          case 'bold':
+            applyFormattingWithRange('bold', savedRange);
+            break;
+          case 'italic':
+            applyFormattingWithRange('italic', savedRange);
+            break;
+          case 'underline':
+            applyFormattingWithRange('underline', savedRange);
+            break;
+          case 'strikethrough':
+            applyFormattingWithRange('strikethrough', savedRange);
+            break;
+          case 'align-left':
+            applyAlignment('left', savedRange);
+            break;
+          case 'align-center':
+            applyAlignment('center', savedRange);
+            break;
+          case 'align-right':
+            applyAlignment('right', savedRange);
+            break;
+          case 'align-justify':
+            applyAlignment('justify', savedRange);
+            break;
+          case 'bullet-list':
+            applyList('ul', savedRange);
+            break;
+          case 'ordered-list':
+            applyList('ol', savedRange);
+            break;
+          case 'link':
+            applyLink(savedRange);
+            break;
+          case 'unlink':
+            removeLink(savedRange);
+            break;
+          case 'image':
+            insertImage(savedRange);
+            break;
+          case 'table':
+            insertTable(savedRange);
+            break;
+          case 'color':
+            applyColor(savedRange);
+            break;
+          case 'highlight':
+            applyHighlight(savedRange);
+            break;
+          case 'font-size':
+            applyFontSize(value, savedRange);
+            break;
+          case 'font-family':
+            applyFontFamily(value, savedRange);
+            break;
+          case 'heading':
+            applyHeading(value, savedRange);
+            break;
+          case 'paragraph':
+            applyParagraph(savedRange);
+            break;
+        }
+        
+        // Trigger input event to update content
+        const inputEvent = new Event('input', { bubbles: true });
+        if (editorRef.current) {
+          editorRef.current.dispatchEvent(inputEvent);
+        }
+      }, 50); // Small delay to ensure focus and selection are properly set
     };
 
     window.addEventListener('toolbar-action', handleToolbarAction as EventListener);
@@ -781,6 +1406,17 @@ function PreserveStyleEditor({ content, onChange }: PreserveStyleEditorProps) {
   
   const handleFocus = () => {
     setIsEditing(true);
+    
+    // Capture any existing selection when focusing
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      if (!range.collapsed && editorRef.current && editorRef.current.contains(range.commonAncestorContainer)) {
+        lastSelectionRef.current = range.cloneRange();
+        lastSelectedTextRef.current = range.toString();
+        console.log('Selection captured on focus:', range.toString());
+      }
+    }
   };
   
   const handleBlur = () => {
@@ -795,6 +1431,15 @@ function PreserveStyleEditor({ content, onChange }: PreserveStyleEditorProps) {
   
   return (
     <div className="preserve-styles-editor">
+      <ColorPicker
+        isOpen={colorPickerOpen}
+        onClose={() => {
+          setColorPickerOpen(false);
+          setPendingRange(null);
+        }}
+        onSelectColor={handleColorSelection}
+        type={colorPickerType}
+      />
       <style>
         {`
           .preserve-styles-editor {
@@ -825,6 +1470,15 @@ function PreserveStyleEditor({ content, onChange }: PreserveStyleEditorProps) {
             /* Inline styles automatically have higher specificity */
           }
           
+          /* Ensure color styles are not overridden - inline styles should take precedence */
+          .editable-content span[style*="color"] {
+            /* Let inline color styles take precedence */
+          }
+          
+          .editable-content span[style*="background-color"] {
+            /* Let inline background-color styles take precedence */
+          }
+          
           /* Ensure formatting commands work properly */
           .editable-content strong, .editable-content b {
             font-weight: bold;
@@ -842,7 +1496,7 @@ function PreserveStyleEditor({ content, onChange }: PreserveStyleEditorProps) {
             text-decoration: line-through;
           }
           
-          .editable-content h1, .editable-content h2, .editable-content h3 {
+          .editable-content h1, .editable-content h2, .editable-content h3, .editable-content h4, .editable-content h5, .editable-content h6 {
             font-weight: bold;
             margin: 1em 0 0.5em 0;
           }
@@ -850,6 +1504,9 @@ function PreserveStyleEditor({ content, onChange }: PreserveStyleEditorProps) {
           .editable-content h1 { font-size: 2em; }
           .editable-content h2 { font-size: 1.5em; }
           .editable-content h3 { font-size: 1.2em; }
+          .editable-content h4 { font-size: 1.1em; }
+          .editable-content h5 { font-size: 1em; }
+          .editable-content h6 { font-size: 0.9em; }
           
           .editable-content ul, .editable-content ol {
             margin: 1em 0;
@@ -874,6 +1531,41 @@ function PreserveStyleEditor({ content, onChange }: PreserveStyleEditorProps) {
           if (editorRef.current) {
             editorRef.current.focus();
           }
+          
+          // Capture any existing selection when clicking in the editor
+          const selection = window.getSelection();
+          if (selection && selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            if (!range.collapsed && editorRef.current && editorRef.current.contains(range.commonAncestorContainer)) {
+              lastSelectionRef.current = range.cloneRange();
+              lastSelectedTextRef.current = range.toString();
+              console.log('Selection captured on click:', range.toString());
+            }
+          }
+        }}
+        onMouseUp={() => {
+          // Capture selection when user finishes selecting text
+          const selection = window.getSelection();
+          if (selection && selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            if (!range.collapsed && editorRef.current && editorRef.current.contains(range.commonAncestorContainer)) {
+              lastSelectionRef.current = range.cloneRange();
+              lastSelectedTextRef.current = range.toString();
+              console.log('Selection captured on mouseup:', range.toString());
+            }
+          }
+        }}
+        onMouseDown={() => {
+          // Capture selection before it might be lost
+          const selection = window.getSelection();
+          if (selection && selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            if (!range.collapsed && editorRef.current && editorRef.current.contains(range.commonAncestorContainer)) {
+              lastSelectionRef.current = range.cloneRange();
+              lastSelectedTextRef.current = range.toString();
+              console.log('Selection captured on mousedown:', range.toString());
+            }
+          }
         }}
         suppressContentEditableWarning={true}
       />
@@ -881,7 +1573,7 @@ function PreserveStyleEditor({ content, onChange }: PreserveStyleEditorProps) {
   );
 }
 
-export default function HtmlEditor({ content, onChange }: HtmlEditorProps) {
+export default function HtmlEditor({ content, onChange, editorRef, onFontFamilyChange }: HtmlEditorProps) {
   const [htmlContent, setHtmlContent] = useState(content || '');
   const [activeTab, setActiveTab] = useState('preview');
   const isUpdatingFromPreview = useRef(false);
@@ -1036,6 +1728,8 @@ export default function HtmlEditor({ content, onChange }: HtmlEditorProps) {
               <PreserveStyleEditor
                 content={extractBodyContent(htmlContent)}
                 onChange={handlePreviewChange}
+                editorRef={editorRef}
+                onFontFamilyChange={onFontFamilyChange}
               />
             </div>
           </Card>
