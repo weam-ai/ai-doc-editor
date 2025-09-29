@@ -8,11 +8,15 @@ export async function GET(request: NextRequest) {
     const session = await getSession();
     
     if (!session?.user?._id) {
+      console.log('Chat History GET - No session user ID');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
     const documentId = searchParams.get('documentId');
+
+    console.log('Chat History GET - Document ID:', documentId);
+    console.log('Chat History GET - User ID:', session.user._id);
 
     if (!documentId) {
       return NextResponse.json({ error: 'Document ID is required' }, { status: 400 });
@@ -25,6 +29,9 @@ export async function GET(request: NextRequest) {
       documentId: documentId,
       'user.id': session.user._id
     });
+
+    console.log('Chat History GET - Found chat history:', chatHistory);
+    console.log('Chat History GET - Messages count:', chatHistory?.messages?.length || 0);
 
     return NextResponse.json(chatHistory || { messages: [] });
   } catch (error) {

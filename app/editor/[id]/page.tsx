@@ -171,8 +171,13 @@ export default function EditorPage() {
         // Check if this is a new document that needs saving
         setHasUnsavedChanges(!doc._id.startsWith('temp_') && doc._id.length < 24);
         
-        // Load chat history for this document
-        loadChatHistory(doc._id);
+        // Load chat history for this document (only for saved documents)
+        if (doc._id && !doc._id.startsWith('temp_') && doc._id.length >= 24) {
+          console.log('Frontend - Loading chat history for saved document:', doc._id);
+          loadChatHistory(doc._id);
+        } else {
+          console.log('Frontend - Skipping chat history load for temporary document:', doc._id);
+        }
       } catch (error) {
         console.error('Error parsing stored document:', error);
         createDefaultDocument();
@@ -421,10 +426,12 @@ export default function EditorPage() {
   // Load chat history for a document
   const loadChatHistory = async (documentId: string) => {
     try {
+      console.log('Frontend - Loading chat history for document:', documentId);
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_PATH}/api/chat-history?documentId=${documentId}`);
       
       if (response.ok) {
         const chatData = await response.json();
+        console.log('Frontend - Chat history response:', chatData);
         
         if (chatData.messages && Array.isArray(chatData.messages)) {
           // Ensure proper typing for messages
@@ -433,8 +440,13 @@ export default function EditorPage() {
             message: msg.message,
             response: msg.response || ''
           }));
+          console.log('Frontend - Setting chat history:', typedMessages);
           setChatHistory(typedMessages);          
+        } else {
+          console.log('Frontend - No messages found in chat data');
         }
+      } else {
+        console.log('Frontend - Chat history API response not ok:', response.status);
       }
     } catch (error) {
       console.error('Frontend - Error loading chat history:', error);
@@ -475,6 +487,7 @@ export default function EditorPage() {
     const aiResponseMessage = `I've updated your document based on your request: "${userMessage}"`;
     
     // Create new message with both user question and AI response
+    // Add user message to chat history immediately
     const newMessage: {type: 'user', message: string, response: string} = {
       type: 'user',
       message: userMessage,
@@ -533,8 +546,8 @@ export default function EditorPage() {
   };
 
   const generateAIResponse = async (request: string, currentContent: string) => {
-    // console.log('AI Request:', request);
-    // console.log('Current content length:', currentContent.length);
+    console.log('AI Request:', request);
+    console.log('Current content length:', currentContent.length);
     
     // Detect if this is a new/template document or an existing document with real content
     const isNewOrTemplateDocument = (content: string) => {
@@ -554,6 +567,50 @@ export default function EditorPage() {
         return true;
       }
       
+      // Check for form input placeholders
+      if (content.includes('placeholder=') && (
+          content.includes('Insert name here') ||
+          content.includes('Insert role here') ||
+          content.includes('placeholder="Insert') ||
+          content.includes('placeholder="Enter') ||
+          content.includes('placeholder="Type') ||
+          content.includes('placeholder="Add') ||
+          content.includes('placeholder="Write') ||
+          content.includes('placeholder="Fill') ||
+          content.includes('placeholder="Select') ||
+          content.includes('placeholder="Choose')
+        )) {
+        return true;
+      }
+      
+      // Check for table content placeholders
+      if (content.includes('HH:MM:SS AM/PM') ||
+          content.includes('This is what the text looks like when it\'s inside a table') ||
+          content.includes('You can even make checklists') ||
+          content.includes('Now you can check on your list') ||
+          content.includes('Have another box to tick')) {
+        return true;
+      }
+      
+      // Check for Weekly Progress Report template
+      if (content.includes('GOLDEN WING HOTEL') ||
+          content.includes('Weekly Progress Report') ||
+          (content.includes('TIME') && content.includes('TASK') && content.includes('REPORT')) ||
+          content.includes('Insert name here') ||
+          content.includes('Insert role here')) {
+        return true;
+      }
+      
+      // Check for common template patterns
+      if (content.includes('placeholder=') && content.includes('input')) {
+        return true;
+      }
+      
+      // Check for any form elements that might need filling
+      if (content.includes('<input') || content.includes('<textarea') || content.includes('<select')) {
+        return true;
+      }
+      
       // If content is very short (less than 100 chars), likely new
       if (content.trim().length < 100) {
         return true;
@@ -562,7 +619,44 @@ export default function EditorPage() {
       return false;
     };
     
-    const isModification = !isNewOrTemplateDocument(currentContent);
+    const isTemplate = isNewOrTemplateDocument(currentContent);
+    
+    // Force modification mode for form filling requests
+    const isFormFillingRequest = request.toLowerCase().includes('tick') || 
+                                request.toLowerCase().includes('checkbox') || 
+                                request.toLowerCase().includes('fill') || 
+                                request.toLowerCase().includes('add john') ||
+                                request.toLowerCase().includes('insert name') ||
+                                request.toLowerCase().includes('insert role') ||
+                                request.toLowerCase().includes('random data') ||
+                                request.toLowerCase().includes('dummy');
+    
+    // Also check if content has form elements that need filling
+    const hasFormElements = currentContent.includes('<input') || 
+                           currentContent.includes('placeholder=') ||
+                           currentContent.includes('Insert name here') ||
+                           currentContent.includes('Insert role here') ||
+                           currentContent.includes('GOLDEN WING HOTEL') ||
+                           currentContent.includes('Weekly Progress Report');
+    
+    // ALWAYS force modification if we have form elements and a form filling request
+    // Also force modification for any request containing "fill" and "form"
+    const isFillFormRequest = request.toLowerCase().includes('fill') && request.toLowerCase().includes('form');
+    const isModification = hasFormElements && isFormFillingRequest ? true : 
+                          isFillFormRequest ? true :
+                          (!isTemplate || isFormFillingRequest || hasFormElements);
+    console.log('Is template:', isTemplate);
+    console.log('Is form filling request:', isFormFillingRequest);
+    console.log('Is fill form request:', isFillFormRequest);
+    console.log('Has form elements:', hasFormElements);
+    console.log('Is modification:', isModification);
+    console.log('Current content preview:', currentContent.substring(0, 500));
+    console.log('Contains GOLDEN WING HOTEL:', currentContent.includes('GOLDEN WING HOTEL'));
+    console.log('Contains Weekly Progress Report:', currentContent.includes('Weekly Progress Report'));
+    console.log('Contains Insert name here:', currentContent.includes('Insert name here'));
+    console.log('Contains Insert role here:', currentContent.includes('Insert role here'));
+    console.log('Contains input elements:', currentContent.includes('<input'));
+    console.log('Contains placeholder:', currentContent.includes('placeholder='));
     
     try {
       // Call OpenAI API to handle the request intelligently
@@ -584,9 +678,9 @@ export default function EditorPage() {
       }
 
       const data = await response.json();
-      // console.log('OpenAI response received:', data);
-      // console.log('Response contentHtml length:', data.contentHtml?.length);
-      // console.log('Response contentHtml starts with:', data.contentHtml?.substring(0, 200));
+      console.log('OpenAI response received:', data);
+      console.log('Response contentHtml length:', data.contentHtml?.length);
+      console.log('Response contentHtml starts with:', data.contentHtml?.substring(0, 200));
       
       if (data.contentHtml && data.contentHtml.trim().startsWith('<')) {
         // console.log('Returning HTML content');
@@ -838,7 +932,7 @@ export default function EditorPage() {
                     disabled={!docRequest.trim() || isLoading}
                     className="w-full"
                   >
-                    {isLoading ? 'Processing...' : 'Send Request'}
+                    {isLoading ? 'Processing...' : 'Send'}
                   </Button>
                 </div>
               </div>
