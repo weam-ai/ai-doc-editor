@@ -71,7 +71,7 @@ export default function EditorPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
-  const [chatHistory, setChatHistory] = useState<Array<{type: 'user' | 'ai', message: string}>>([]);
+  const [chatHistory, setChatHistory] = useState<Array<{type: 'user', message: string, response: string}>>([]);
   const [contentVersion, setContentVersion] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [docRequest, setDocRequest] = useState('');
@@ -170,6 +170,9 @@ export default function EditorPage() {
         setContentHtml(doc.contentHtml);
         // Check if this is a new document that needs saving
         setHasUnsavedChanges(!doc._id.startsWith('temp_') && doc._id.length < 24);
+        
+        // Load chat history for this document
+        loadChatHistory(doc._id);
       } catch (error) {
         console.error('Error parsing stored document:', error);
         createDefaultDocument();
@@ -374,6 +377,13 @@ export default function EditorPage() {
         contentHtml: contentSnapshot.contentHtml
       }));
       
+      // Load chat history for the newly saved document
+      if (savedDoc._id) {
+        console.log('Frontend - Document saved with ID:', savedDoc._id);
+        console.log('Frontend - Now loading chat history for saved document...');
+        await loadChatHistory(savedDoc._id);
+      }
+      
     } catch (error) {
       console.error('Error saving document:', error);
       toast({
@@ -407,14 +417,72 @@ export default function EditorPage() {
       }, 2000); // Wait 2 seconds to ensure all effects have completed
     }
   };
-  
 
+  // Load chat history for a document
+  const loadChatHistory = async (documentId: string) => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_PATH}/api/chat-history?documentId=${documentId}`);
+      
+      if (response.ok) {
+        const chatData = await response.json();
+        
+        if (chatData.messages && Array.isArray(chatData.messages)) {
+          // Ensure proper typing for messages
+          const typedMessages = chatData.messages.map((msg: any) => ({
+            type: msg.type as 'user',
+            message: msg.message,
+            response: msg.response || ''
+          }));
+          setChatHistory(typedMessages);          
+        }
+      }
+    } catch (error) {
+      console.error('Frontend - Error loading chat history:', error);
+      // Don't show error to user as this is not critical
+    }
+  };
+
+  // Save chat history for a document
+  const saveChatHistory = async (documentId: string, messages: Array<{type: 'user', message: string, response: string}>) => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_PATH}/api/chat-history`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          documentId: documentId,
+          messages: messages,
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Frontend - Failed to save chat history:', response.status, errorText);
+      } else {
+        console.log('Frontend - Chat history saved successfully');
+      }
+    } catch (error) {
+      console.error('Frontend - Error saving chat history:', error);
+      // Don't show error to user as this is not critical
+    }
+  };
 
   const handleDocRequest = async () => {
     if (!docRequest.trim()) return;
 
     const userMessage = docRequest;
-    setChatHistory(prev => [...prev, { type: 'user', message: userMessage }]);
+    const aiResponseMessage = `I've updated your document based on your request: "${userMessage}"`;
+    
+    // Create new message with both user question and AI response
+    const newMessage: {type: 'user', message: string, response: string} = {
+      type: 'user',
+      message: userMessage,
+      response: '' // Will be updated after AI response
+    };
+    
+    const newChatHistory: Array<{type: 'user', message: string, response: string}> = [...chatHistory, newMessage];
+    setChatHistory(newChatHistory);
     setDocRequest('');
     
     // Show loading immediately after button click
@@ -429,8 +497,21 @@ export default function EditorPage() {
       setHasUnsavedChanges(true);
       setContentVersion(prev => prev + 1); // Force editor re-render
       
-      // Add AI response to chat history
-      setChatHistory(prev => [...prev, { type: 'ai', message: `I've updated your document based on your request: "${userMessage}"` }]);
+      // Update the last message with AI response
+      const finalChatHistory: Array<{type: 'user', message: string, response: string}> = [
+        ...chatHistory,
+        {
+          type: 'user',
+          message: userMessage,
+          response: aiResponseMessage
+        }
+      ];
+      setChatHistory(finalChatHistory);
+      
+      // Save chat history to database
+      if (document && document._id) {
+        await saveChatHistory(document._id, finalChatHistory);
+      }
       
       toast({
         title: 'Document updated',
@@ -443,6 +524,9 @@ export default function EditorPage() {
         description: 'Failed to process your request. Please try again.',
         variant: 'destructive',
       });
+      
+      // Remove the user message from chat history if there was an error
+      setChatHistory(prev => prev.slice(0, -1));
     } finally {
       setIsLoading(false);
     }
@@ -696,15 +780,32 @@ export default function EditorPage() {
                     </div>
                   ) : (
                     chatHistory.map((message, index) => (
-                      <div
-                        key={index}
-                        className={`p-3 rounded-lg ${
-                          message.type === 'user'
-                            ? 'bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-100 ml-8'
-                            : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 mr-8'
-                        }`}
-                      >
-                        <p className="text-sm">{message.message}</p>
+                      <div key={index} className="space-y-2">
+                        {/* User Message */}
+                        <div className="p-3 rounded-lg bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-100 ml-8">
+                          <p className="text-sm font-medium">You:</p>
+                          <p className="text-sm">{message.message}</p>
+                        </div>
+                        
+                        {/* AI Response */}
+                        {message.response && (
+                          <div className="p-3 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 mr-8">
+                            <p className="text-sm font-medium">AI Assistant:</p>
+                            <p className="text-sm">{message.response}</p>
+                          </div>
+                        )}
+                        
+                        {/* Loading indicator for current message */}
+                        {!message.response && index === chatHistory.length - 1 && (
+                          <div className="p-3 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 mr-8">
+                            <p className="text-sm font-medium">AI Assistant:</p>
+                            <div className="flex items-center space-x-1">
+                              <div className="w-2 h-2 rounded-full animate-bounce bg-gray-500"></div>
+                              <div className="w-2 h-2 rounded-full animate-bounce bg-gray-500" style={{ animationDelay: '0.1s' }}></div>
+                              <div className="w-2 h-2 rounded-full animate-bounce bg-gray-500" style={{ animationDelay: '0.2s' }}></div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))
                   )}

@@ -60,4 +60,9 @@ DocumentSchema.pre('save', function(next) {
   next();
 });
 
-export default mongoose.models.Document || mongoose.model('Document', DocumentSchema);
+// Clear any existing model to ensure we use the new collection name
+if (mongoose.models.Document) {
+  delete mongoose.models.Document;
+}
+
+export default mongoose.model('Document', DocumentSchema, 'solution_aidocs_documents');
