@@ -111,9 +111,26 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
   // Set initial content when component mounts or content prop changes from external source
   useEffect(() => {
     if (editorRef.current) {
-      if (content && !isEditing) {
+      // Only update if we're not currently editing AND the content has actually changed
+      const currentContent = editorRef.current.innerHTML;
+      
+      if (content && !isEditing && currentContent !== content) {
+        // Before updating, check if there are any focused interactive elements
+        const activeElement = document.activeElement as HTMLElement;
+        const isInteractiveElementFocused = activeElement && 
+                                           editorRef.current.contains(activeElement) &&
+                                           (activeElement.tagName === 'INPUT' || 
+                                            activeElement.tagName === 'TEXTAREA' || 
+                                            activeElement.tagName === 'SELECT');
+        
+        // Don't update if an interactive element is focused
+        if (isInteractiveElementFocused) {
+          console.log('Interactive element is focused, skipping content update');
+          return;
+        }
+        
         editorRef.current.innerHTML = content;
-      } else if (!content) {
+      } else if (!content && !currentContent) {
         editorRef.current.innerHTML = '<p>Click here to start editing...</p>';
       }
     }
@@ -505,6 +522,137 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
     document.addEventListener('selectionchange', handleSelectionChange);
     return () => document.removeEventListener('selectionchange', handleSelectionChange);
   }, [onFontFamilyChange]);
+
+  // Function to sync input values to HTML attributes for persistence
+  const syncInputValuesToAttributes = () => {
+    if (!editorRef.current) return;
+    
+    // Update all input elements to have their current value in the value attribute
+    const inputs = editorRef.current.querySelectorAll('input');
+    inputs.forEach(input => {
+      const inputElement = input as HTMLInputElement;
+      if (inputElement.type === 'checkbox') {
+        // For checkboxes, sync the checked state
+        if (inputElement.checked) {
+          inputElement.setAttribute('checked', 'checked');
+        } else {
+          inputElement.removeAttribute('checked');
+        }
+      } else if (inputElement.type === 'radio') {
+        // For radio buttons, sync the checked state
+        if (inputElement.checked) {
+          inputElement.setAttribute('checked', 'checked');
+        } else {
+          inputElement.removeAttribute('checked');
+        }
+      } else {
+        // For text inputs, sync the value
+        inputElement.setAttribute('value', inputElement.value);
+      }
+    });
+    
+    // Update all textarea elements
+    const textareas = editorRef.current.querySelectorAll('textarea');
+    textareas.forEach(textarea => {
+      const textareaElement = textarea as HTMLTextAreaElement;
+      textareaElement.textContent = textareaElement.value;
+    });
+    
+    // Update all select elements
+    const selects = editorRef.current.querySelectorAll('select');
+    selects.forEach(select => {
+      const selectElement = select as HTMLSelectElement;
+      const options = selectElement.querySelectorAll('option');
+      options.forEach((option, index) => {
+        if (index === selectElement.selectedIndex) {
+          option.setAttribute('selected', 'selected');
+        } else {
+          option.removeAttribute('selected');
+        }
+      });
+    });
+    
+    console.log('Synced all input values to HTML attributes');
+  };
+
+  // Listen for changes in input fields and save them
+  useEffect(() => {
+    if (!editorRef.current) return;
+    
+    const handleInputChange = (e: Event) => {
+      const target = e.target as HTMLInputElement | HTMLTextAreaElement;
+      console.log('Input field changed:', target.tagName, target.value);
+      
+      // Sync the value to the attribute immediately
+      if (target.tagName === 'INPUT') {
+        const inputElement = target as HTMLInputElement;
+        if (inputElement.type === 'checkbox' || inputElement.type === 'radio') {
+          if (inputElement.checked) {
+            inputElement.setAttribute('checked', 'checked');
+          } else {
+            inputElement.removeAttribute('checked');
+          }
+        } else {
+          inputElement.setAttribute('value', inputElement.value);
+        }
+      } else if (target.tagName === 'TEXTAREA') {
+        target.textContent = target.value;
+      }
+      
+      // Trigger a delayed save to persist the input value
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+      
+      debounceTimeoutRef.current = setTimeout(() => {
+        // Sync all values before saving
+        syncInputValuesToAttributes();
+        
+        if (editorRef.current) {
+          const currentContent = editorRef.current.innerHTML;
+          onChange(currentContent);
+          console.log('Saved content with input values');
+        }
+      }, 500); // Longer debounce for input fields
+    };
+    
+    // Attach change listeners to all input/textarea/select elements
+    const attachListeners = () => {
+      if (!editorRef.current) return;
+      
+      const inputs = editorRef.current.querySelectorAll('input, textarea, select');
+      inputs.forEach(input => {
+        input.addEventListener('input', handleInputChange);
+        input.addEventListener('change', handleInputChange);
+        input.addEventListener('blur', handleInputChange);
+      });
+    };
+    
+    // Attach listeners initially
+    attachListeners();
+    
+    // Use MutationObserver to detect when new input elements are added
+    const observer = new MutationObserver(() => {
+      attachListeners();
+    });
+    
+    observer.observe(editorRef.current, {
+      childList: true,
+      subtree: true
+    });
+    
+    return () => {
+      observer.disconnect();
+      if (editorRef.current) {
+        const inputs = editorRef.current.querySelectorAll('input, textarea, select');
+        inputs.forEach(input => {
+          input.removeEventListener('input', handleInputChange);
+          input.removeEventListener('change', handleInputChange);
+          input.removeEventListener('blur', handleInputChange);
+        });
+      }
+    };
+  }, [onChange]);
 
   // Function to apply text alignment
   const applyAlignment = (alignment: string, savedRange: Range | null) => {
@@ -1392,6 +1540,20 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
   }, []);
   
   const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
+    // Check if the input event originated from an interactive element
+    const target = e.target as HTMLElement;
+    const isInteractive = target.tagName === 'INPUT' || 
+                          target.tagName === 'TEXTAREA' || 
+                          target.tagName === 'SELECT' || 
+                          target.tagName === 'BUTTON';
+    
+    // If input is from an interactive element, don't update the whole content
+    // This prevents input values from being lost
+    if (isInteractive) {
+      console.log('Input from interactive element, skipping content update');
+      return;
+    }
+    
     const newContent = e.currentTarget.innerHTML;
     
     // Debounce the onChange call to prevent excessive updates
@@ -1419,8 +1581,26 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
     }
   };
   
-  const handleBlur = () => {
+  const handleBlur = (e: React.FocusEvent<HTMLDivElement>) => {
+    // Check if we're focusing into an interactive element within the editor
+    const relatedTarget = e.relatedTarget as HTMLElement;
+    if (relatedTarget && editorRef.current?.contains(relatedTarget)) {
+      const isInteractive = relatedTarget.tagName === 'INPUT' || 
+                           relatedTarget.tagName === 'TEXTAREA' || 
+                           relatedTarget.tagName === 'SELECT' || 
+                           relatedTarget.tagName === 'BUTTON';
+      
+      // If moving to an interactive element within the editor, keep editing state
+      if (isInteractive) {
+        console.log('Moving to interactive element, keeping editing state');
+        return;
+      }
+    }
+    
     setIsEditing(false);
+    
+    // Sync all input values to their HTML attributes before saving
+    syncInputValuesToAttributes();
     
     // Make sure final content is saved when losing focus
     if (editorRef.current) {
@@ -1516,6 +1696,31 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
           .editable-content li {
             margin: 0.25em 0;
           }
+          
+          /* Make interactive elements work properly within contentEditable */
+          .editable-content input,
+          .editable-content textarea,
+          .editable-content select,
+          .editable-content button {
+            pointer-events: auto;
+            user-select: text;
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+          }
+          
+          .editable-content input:focus,
+          .editable-content textarea:focus,
+          .editable-content select:focus {
+            outline: 2px solid rgba(59, 130, 246, 0.5);
+            outline-offset: 2px;
+          }
+          
+          /* Ensure checkboxes are clickable */
+          .editable-content input[type="checkbox"] {
+            cursor: pointer;
+            pointer-events: auto;
+          }
         `}
       </style>
       
@@ -1526,7 +1731,21 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
         onInput={handleInput}
         onFocus={handleFocus}
         onBlur={handleBlur}
-        onClick={() => {
+        onClick={(e) => {
+          // Check if the clicked element is an interactive element (input, textarea, select, button, etc.)
+          const target = e.target as HTMLElement;
+          const isInteractive = target.tagName === 'INPUT' || 
+                                target.tagName === 'TEXTAREA' || 
+                                target.tagName === 'SELECT' || 
+                                target.tagName === 'BUTTON' ||
+                                target.tagName === 'A';
+          
+          // If clicking on interactive element, don't interfere with it
+          if (isInteractive) {
+            console.log('Clicked on interactive element:', target.tagName);
+            return;
+          }
+          
           // Ensure focus is maintained when clicking
           if (editorRef.current) {
             editorRef.current.focus();
@@ -1543,7 +1762,20 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
             }
           }
         }}
-        onMouseUp={() => {
+        onMouseUp={(e) => {
+          // Check if the target is an interactive element
+          const target = e.target as HTMLElement;
+          const isInteractive = target.tagName === 'INPUT' || 
+                                target.tagName === 'TEXTAREA' || 
+                                target.tagName === 'SELECT' || 
+                                target.tagName === 'BUTTON' ||
+                                target.tagName === 'A';
+          
+          // If interacting with interactive element, don't capture selection
+          if (isInteractive) {
+            return;
+          }
+          
           // Capture selection when user finishes selecting text
           const selection = window.getSelection();
           if (selection && selection.rangeCount > 0) {
@@ -1555,7 +1787,20 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
             }
           }
         }}
-        onMouseDown={() => {
+        onMouseDown={(e) => {
+          // Check if the target is an interactive element
+          const target = e.target as HTMLElement;
+          const isInteractive = target.tagName === 'INPUT' || 
+                                target.tagName === 'TEXTAREA' || 
+                                target.tagName === 'SELECT' || 
+                                target.tagName === 'BUTTON' ||
+                                target.tagName === 'A';
+          
+          // If interacting with interactive element, don't capture selection
+          if (isInteractive) {
+            return;
+          }
+          
           // Capture selection before it might be lost
           const selection = window.getSelection();
           if (selection && selection.rangeCount > 0) {

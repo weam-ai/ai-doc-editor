@@ -31,18 +31,18 @@ export const weeklyProgressReportTemplate = {
   <div style="margin-bottom:30px;">
     <div style="display:flex; align-items:center; margin-bottom:15px; font-size:14px;">
       <span style="font-weight:600; min-width:80px; margin-right:15px;">Name:</span>
-      <input type="text" placeholder="Insert name here" readonly
-             style="flex:1; border:none; border-bottom:1px solid #333; background:transparent; padding:5px 0; font-size:14px; color:#666;"/>
+      <input type="text" placeholder="Insert name here"
+             style="flex:1; border:none; border-bottom:1px solid #333; background:transparent; padding:5px 0; font-size:14px; color:#333;"/>
     </div>
     <div style="display:flex; align-items:center; margin-bottom:15px; font-size:14px;">
       <span style="font-weight:600; min-width:80px; margin-right:15px;">Position:</span>
-      <input type="text" placeholder="Insert role here" readonly
-             style="flex:1; border:none; border-bottom:1px solid #333; background:transparent; padding:5px 0; font-size:14px; color:#666;"/>
+      <input type="text" placeholder="Insert role here"
+             style="flex:1; border:none; border-bottom:1px solid #333; background:transparent; padding:5px 0; font-size:14px; color:#333;"/>
     </div>
     <div style="display:flex; align-items:center; margin-bottom:15px; font-size:14px;">
       <span style="font-weight:600; min-width:80px; margin-right:15px;">Date:</span>
-      <input type="text" value="Jan 9, 2030" readonly
-             style="flex:1; border:none; border-bottom:1px solid #333; background:transparent; padding:5px 0; font-size:14px; color:#666;"/>
+      <input type="text" value="Jan 9, 2030"
+             style="flex:1; border:none; border-bottom:1px solid #333; background:transparent; padding:5px 0; font-size:14px; color:#333;"/>
     </div>
   </div>
 
