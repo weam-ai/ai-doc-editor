@@ -46,7 +46,9 @@ function isDocumentRelatedRequest(prompt: string): boolean {
     'modern', 'design', 'position', 'move', 'align', 'center', 'left', 'right',
     'column', 'row', 'table', 'list', 'bullet', 'number', 'font', 'size',
     'bold', 'italic', 'underline', 'highlight', 'background', 'border',
-    'margin', 'padding', 'spacing', 'width', 'height', 'size'
+    'margin', 'padding', 'spacing', 'width', 'height', 'size', 'generate',
+    'create', 'write', 'build', 'develop', 'design', 'wordpress', 'blog',
+    'website', 'page', 'document', 'article', 'post', 'content'
   ];
   
   return documentKeywords.some(keyword => lowerPrompt.includes(keyword));
@@ -58,6 +60,22 @@ function trackChanges(oldContent: string, newContent: string, prompt: string): {
     return {
       hasChanges: true,
       summary: `Created new content based on: "${prompt}"`
+    };
+  }
+
+  // Check if this is a blank document with placeholder content
+  const isBlankDocument = oldContent.includes('Start writing your content here...') || 
+                         oldContent.includes('New Document') ||
+                         oldContent.trim().length < 100;
+
+  // For blank documents with content generation requests, always consider it a change
+  if (isBlankDocument && (prompt.toLowerCase().includes('generate') || 
+                         prompt.toLowerCase().includes('create') || 
+                         prompt.toLowerCase().includes('write') || 
+                         prompt.toLowerCase().includes('make'))) {
+    return {
+      hasChanges: true,
+      summary: `Generated new content based on: "${prompt}"`
     };
   }
 
@@ -212,13 +230,25 @@ export async function POST(request: NextRequest) {
 
 1. **Be conversational and natural**: Write in a friendly, helpful tone similar to ChatGPT
 2. **Ask clarifying questions when needed**: If the request is vague, suggest improvements or ask for more details
-3. **Provide comprehensive content**: Create detailed, well-structured documents that exceed expectations
+3. **Provide comprehensive content**: Create detailed, well-structured documents that exceed expectations - aim for 1000+ words of meaningful content
 4. **Use proper HTML formatting**: Format documents with semantic HTML tags, clear headings, bullet points, and logical structure
 5. **Be creative and thoughtful**: Add relevant sections, suggestions, and best practices that enhance the document
 6. **Show expertise**: Demonstrate knowledge of the document type and industry best practices
 7. **Be helpful beyond the request**: Suggest additional sections or considerations that might be valuable
+8. **Create substantial content**: Don't just create a basic template - fill it with realistic, detailed content that would be useful in real-world scenarios
+9. **Add multiple sections**: Include various relevant sections, examples, and comprehensive information
+10. **Use realistic data**: Include realistic names, dates, examples, and content that makes the document feel authentic
 
 Your goal is to create documents that are not just functional, but impressive and professional. Think like an experienced consultant or professional writer who cares about delivering exceptional quality.
+
+For blog posts, websites, or content-heavy documents:
+- Include multiple detailed sections
+- Add realistic sample content
+- Include multiple examples or case studies
+- Add navigation, headers, footers
+- Include call-to-action sections
+- Add contact information, about sections, etc.
+- Make it look like a real, professional website or document
 
 IMPORTANT: Return ONLY clean, well-formatted HTML. Do not use markdown formatting. Use proper HTML tags like:
 - <h1>, <h2>, <h3> for headings
@@ -227,10 +257,11 @@ IMPORTANT: Return ONLY clean, well-formatted HTML. Do not use markdown formattin
 - <strong>, <em> for emphasis
 - <div> with appropriate classes for structure
 - <style> tags for basic styling if needed
+- <header>, <nav>, <main>, <section>, <article>, <footer> for semantic structure
 
 CRITICAL: Return ONLY the raw HTML content. Do not wrap in markdown code blocks or add explanations. Start directly with <!DOCTYPE html> or <html>.
 
-Remember: You're not just generating content, you're being a helpful assistant who creates outstanding HTML documents.`;
+Remember: You're not just generating content, you're being a helpful assistant who creates outstanding HTML documents with substantial, useful content.`;
 
       if (template) {
         systemPrompt += `\n\n**Template Reference**: Use this template structure as inspiration, but feel free to enhance and improve upon it:\n${template}`;
@@ -249,7 +280,7 @@ Remember: You're not just generating content, you're being a helpful assistant w
           content: prompt
         }
       ],
-      max_tokens: 8000,
+      max_tokens: 12000, // Increased from 8000 to allow for longer, more comprehensive content
       temperature: isModification ? 0.1 : 0.7, // Lower temperature for modifications, higher for creative document generation
     });
 

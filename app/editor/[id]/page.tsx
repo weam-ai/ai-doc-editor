@@ -619,6 +619,18 @@ export default function EditorPage() {
       return false;
     };
     
+    // Check if this is a content generation request (like "Generate a wordpress blog")
+    const isContentGenerationRequest = (request: string) => {
+      const lowerRequest = request.toLowerCase();
+      return lowerRequest.includes('generate') || 
+             lowerRequest.includes('create') || 
+             lowerRequest.includes('write') || 
+             lowerRequest.includes('make') ||
+             lowerRequest.includes('build') ||
+             lowerRequest.includes('design') ||
+             lowerRequest.includes('develop');
+    };
+    
     const isTemplate = isNewOrTemplateDocument(currentContent);
     
     // Force modification mode for form filling requests
@@ -642,13 +654,22 @@ export default function EditorPage() {
     // ALWAYS force modification if we have form elements and a form filling request
     // Also force modification for any request containing "fill" and "form"
     const isFillFormRequest = request.toLowerCase().includes('fill') && request.toLowerCase().includes('form');
+    
+    // For blank documents with content generation requests, treat as new document creation
+    // For blank documents with modification requests, treat as modification
+    const isBlankDocument = isTemplate && (currentContent.includes('Start writing your content here...') || 
+                                          currentContent.includes('New Document'));
+    
     const isModification = hasFormElements && isFormFillingRequest ? true : 
                           isFillFormRequest ? true :
+                          (isBlankDocument && isContentGenerationRequest(request)) ? false :
                           (!isTemplate || isFormFillingRequest || hasFormElements);
     console.log('Is template:', isTemplate);
     console.log('Is form filling request:', isFormFillingRequest);
     console.log('Is fill form request:', isFillFormRequest);
     console.log('Has form elements:', hasFormElements);
+    console.log('Is blank document:', isBlankDocument);
+    console.log('Is content generation request:', isContentGenerationRequest(request));
     console.log('Is modification:', isModification);
     console.log('Current content preview:', currentContent.substring(0, 500));
     console.log('Contains GOLDEN WING HOTEL:', currentContent.includes('GOLDEN WING HOTEL'));
@@ -690,6 +711,21 @@ export default function EditorPage() {
         // This allows ChatGPT-like responses to be displayed as-is
         console.log('New document creation - returning raw content');
         return data.content;
+      } else if (isBlankDocument && isContentGenerationRequest(request) && data.content) {
+        // Special case: for blank documents with content generation requests,
+        // if we get content but no HTML, wrap it in basic HTML structure
+        console.log('Blank document content generation - wrapping content in HTML');
+        return `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generated Document</title>
+</head>
+<body>
+    <div>${data.content}</div>
+</body>
+</html>`;
       } else {
         // Fallback if no valid content
         console.warn('AI response has no valid content, falling back to original content');
