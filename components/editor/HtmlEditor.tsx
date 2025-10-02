@@ -756,32 +756,172 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
 
   // Function to apply links
   const applyLink = (savedRange: Range | null) => {
-    if (!savedRange || savedRange.collapsed) return;
-    
-    const url = prompt('Enter URL:');
-    if (!url) return;
-    
     if (editorRef.current) {
       editorRef.current.focus();
     }
-    
-    const newRange = document.createRange();
-    newRange.setStart(savedRange.startContainer, savedRange.startOffset);
-    newRange.setEnd(savedRange.endContainer, savedRange.endOffset);
-    
-    const selection = window.getSelection();
-    if (selection) {
-      selection.removeAllRanges();
-      selection.addRange(newRange);
+  
+    let selectedText = '';
+    let hasSelectedText = false;
+  
+    // Check if there's selected text
+    if (savedRange && !savedRange.collapsed) {
+      selectedText = savedRange.toString();
+      hasSelectedText = true;
     }
-    
-    const link = document.createElement('a');
-    link.href = url;
-    link.textContent = newRange.toString();
-    
-    newRange.deleteContents();
-    newRange.insertNode(link);
-  };
+  
+    // Create modal overlay
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    `;
+  
+    // Modal content
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      min-width: 400px;
+    `;
+  
+    const title = document.createElement('h3');
+    title.textContent = 'Add Link';
+    title.style.cssText = 'margin: 0 0 15px 0; font-size: 18px;';
+  
+    const linkTextLabel = document.createElement('label');
+    linkTextLabel.textContent = 'Link Text:';
+    linkTextLabel.style.cssText = 'display: block; margin-bottom: 5px; font-weight: bold;';
+  
+    const linkTextInput = document.createElement('input');
+    linkTextInput.type = 'text';
+    linkTextInput.value = selectedText;
+    linkTextInput.placeholder = 'Enter link text';
+    linkTextInput.style.cssText = `
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    `;
+  
+    const urlLabel = document.createElement('label');
+    urlLabel.textContent = 'URL:';
+    urlLabel.style.cssText = 'display: block; margin-bottom: 5px; font-weight: bold;';
+  
+    const urlInput = document.createElement('input');
+    urlInput.type = 'url';
+    urlInput.placeholder = 'https://example.com';
+    urlInput.style.cssText = `
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    `;
+  
+    const buttonContainer = document.createElement('div');
+    buttonContainer.style.cssText = 'display: flex; gap: 10px; justify-content: flex-end;';
+  
+    const cancelButton = document.createElement('button');
+    cancelButton.textContent = 'Cancel';
+    cancelButton.style.cssText = `
+      padding: 8px 16px;
+      border: 1px solid #ccc;
+      background: white;
+      border-radius: 4px;
+      cursor: pointer;
+    `;
+  
+    const addButton = document.createElement('button');
+    addButton.textContent = 'Add Link';
+    addButton.style.cssText = `
+      padding: 8px 16px;
+      border: none;
+      background: #007bff;
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+    `;
+  
+    modalContent.appendChild(title);
+    modalContent.appendChild(linkTextLabel);
+    modalContent.appendChild(linkTextInput);
+    modalContent.appendChild(urlLabel);
+    modalContent.appendChild(urlInput);
+    buttonContainer.appendChild(cancelButton);
+    buttonContainer.appendChild(addButton);
+    modalContent.appendChild(buttonContainer);
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+  
+    // Focus logic
+    if (selectedText) {
+      urlInput.focus();
+    } else {
+      linkTextInput.focus();
+    }
+  
+    const cleanup = () => {
+      document.body.removeChild(modal);
+    };
+  
+    // Cancel button
+    cancelButton.onclick = cleanup;
+  
+    // Add link button
+    addButton.onclick = () => {
+      const linkText = linkTextInput.value || urlInput.value;
+      const linkUrl = urlInput.value.trim();
+  
+      if (!linkUrl) {
+        alert("Please enter a valid URL");
+        return;
+      }
+  
+      const a = document.createElement("a");
+      a.href = linkUrl;
+      a.target = "_blank";
+      a.textContent = linkText;
+  
+      // --- INLINE STYLES TO OVERRIDE GLOBAL CSS ---
+      a.style.color = "#007bff";
+      a.style.textDecoration = "underline";
+      a.style.cursor = "pointer";
+  
+      if (savedRange) {
+        const selection = window.getSelection();
+        selection?.removeAllRanges();
+        selection?.addRange(savedRange);
+  
+        if (hasSelectedText) {
+          // Replace selected text
+          savedRange.deleteContents();
+          savedRange.insertNode(a);
+        } else {
+          // Insert at cursor
+          savedRange.insertNode(a);
+        }
+      } else if (editorRef.current) {
+        // Fallback: append at end
+        editorRef.current.appendChild(a);
+      }
+  
+      cleanup();
+    };
+  };  
+  
 
   // Function to remove links
   const removeLink = (savedRange: Range | null) => {
