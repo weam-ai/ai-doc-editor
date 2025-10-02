@@ -1098,49 +1098,190 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
 
   // Function to insert tables
   const insertTable = (savedRange: Range | null) => {
-    const rows = prompt('Number of rows:', '3');
-    const cols = prompt('Number of columns:', '3');
-    
-    if (!rows || !cols) return;
-    
     if (editorRef.current) {
       editorRef.current.focus();
     }
-    
-    const table = document.createElement('table');
-    table.style.borderCollapse = 'collapse';
-    table.style.width = '100%';
-    table.style.border = '1px solid #ccc';
-    
-    for (let i = 0; i < parseInt(rows); i++) {
-      const row = document.createElement('tr');
-      for (let j = 0; j < parseInt(cols); j++) {
-        const cell = document.createElement(i === 0 ? 'th' : 'td');
-        cell.textContent = i === 0 ? `Header ${j + 1}` : `Cell ${i}-${j + 1}`;
-        cell.style.border = '1px solid #ccc';
-        cell.style.padding = '8px';
-        row.appendChild(cell);
-      }
-      table.appendChild(row);
-    }
-    
+
+    let hasSelectedText = false;
     if (savedRange && !savedRange.collapsed) {
-      const newRange = document.createRange();
-      newRange.setStart(savedRange.startContainer, savedRange.startOffset);
-      newRange.setEnd(savedRange.endContainer, savedRange.endOffset);
-      newRange.deleteContents();
-      newRange.insertNode(table);
-    } else {
-      const selection = window.getSelection();
-      if (selection && selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0);
-        range.insertNode(table);
-        range.setStartAfter(table);
-        range.setEndAfter(table);
-        selection.removeAllRanges();
-        selection.addRange(range);
-      }
+      hasSelectedText = true;
     }
+
+    // Create modal overlay
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    `;
+
+    // Modal content
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      min-width: 400px;
+    `;
+
+    const title = document.createElement('h3');
+    title.textContent = 'Insert Table';
+    title.style.cssText = 'margin: 0 0 15px 0; font-size: 18px;';
+
+    const rowsLabel = document.createElement('label');
+    rowsLabel.textContent = 'Number of Rows:';
+    rowsLabel.style.cssText = 'display: block; margin-bottom: 5px; font-weight: bold;';
+
+    const rowsInput = document.createElement('input');
+    rowsInput.type = 'number';
+    rowsInput.value = '3';
+    rowsInput.min = '1';
+    rowsInput.max = '20';
+    rowsInput.style.cssText = `
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    `;
+
+    const colsLabel = document.createElement('label');
+    colsLabel.textContent = 'Number of Columns:';
+    colsLabel.style.cssText = 'display: block; margin-bottom: 5px; font-weight: bold;';
+
+    const colsInput = document.createElement('input');
+    colsInput.type = 'number';
+    colsInput.value = '3';
+    colsInput.min = '1';
+    colsInput.max = '20';
+    colsInput.style.cssText = `
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    `;
+
+    const buttonContainer = document.createElement('div');
+    buttonContainer.style.cssText = 'display: flex; gap: 10px; justify-content: flex-end;';
+
+    const cancelButton = document.createElement('button');
+    cancelButton.textContent = 'Cancel';
+    cancelButton.style.cssText = `
+      padding: 8px 16px;
+      border: 1px solid #ccc;
+      background: white;
+      border-radius: 4px;
+      cursor: pointer;
+    `;
+
+    const insertButton = document.createElement('button');
+    insertButton.textContent = 'Insert Table';
+    insertButton.style.cssText = `
+      padding: 8px 16px;
+      border: none;
+      background: #007bff;
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+    `;
+
+    modalContent.appendChild(title);
+    modalContent.appendChild(rowsLabel);
+    modalContent.appendChild(rowsInput);
+    modalContent.appendChild(colsLabel);
+    modalContent.appendChild(colsInput);
+    buttonContainer.appendChild(cancelButton);
+    buttonContainer.appendChild(insertButton);
+    modalContent.appendChild(buttonContainer);
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+
+    // Focus on first input
+    rowsInput.focus();
+
+    const cleanup = () => {
+      document.body.removeChild(modal);
+    };
+
+    const insertTableElement = () => {
+      const rows = parseInt(rowsInput.value);
+      const cols = parseInt(colsInput.value);
+      
+      if (!rows || !cols || rows < 1 || cols < 1) {
+        alert('Please enter valid numbers for rows and columns');
+        return;
+      }
+
+      const table = document.createElement('table');
+      table.style.borderCollapse = 'collapse';
+      table.style.width = '100%';
+      table.style.border = '1px solid #ccc';
+      
+      for (let i = 0; i < rows; i++) {
+        const row = document.createElement('tr');
+        for (let j = 0; j < cols; j++) {
+          const cell = document.createElement(i === 0 ? 'th' : 'td');
+          cell.textContent = i === 0 ? `Header ${j + 1}` : `Cell ${i}-${j + 1}`;
+          cell.style.border = '1px solid #ccc';
+          cell.style.padding = '8px';
+          row.appendChild(cell);
+        }
+        table.appendChild(row);
+      }
+
+      if (savedRange) {
+        const selection = window.getSelection();
+        selection?.removeAllRanges();
+        selection?.addRange(savedRange);
+
+        if (hasSelectedText) {
+          // Replace selected text with table
+          savedRange.deleteContents();
+          savedRange.insertNode(table);
+        } else {
+          // Insert at cursor
+          savedRange.insertNode(table);
+        }
+      } else if (editorRef.current) {
+        // Fallback: append at end
+        editorRef.current.appendChild(table);
+      }
+
+      cleanup();
+    };
+
+    cancelButton.onclick = cleanup;
+    insertButton.onclick = insertTableElement;
+
+    // Handle Enter key
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        insertTableElement();
+      } else if (e.key === 'Escape') {
+        cleanup();
+      }
+    };
+
+    rowsInput.addEventListener('keydown', handleKeyPress);
+    colsInput.addEventListener('keydown', handleKeyPress);
+
+    // Close on backdrop click
+    modal.onclick = (e) => {
+      if (e.target === modal) {
+        cleanup();
+      }
+    };
   };
 
   // Function to apply text color
