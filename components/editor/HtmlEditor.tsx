@@ -956,37 +956,145 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
 
   // Function to insert images
   const insertImage = (savedRange: Range | null) => {
-    const imageUrl = prompt('Enter image URL:');
-    if (!imageUrl) return;
-    
     if (editorRef.current) {
       editorRef.current.focus();
     }
-    
-    const img = document.createElement('img');
-    img.src = imageUrl;
-    img.alt = 'Image';
-    img.style.maxWidth = '100%';
-    img.style.height = 'auto';
-    
+
+    let hasSelectedText = false;
     if (savedRange && !savedRange.collapsed) {
-      const newRange = document.createRange();
-      newRange.setStart(savedRange.startContainer, savedRange.startOffset);
-      newRange.setEnd(savedRange.endContainer, savedRange.endOffset);
-      newRange.deleteContents();
-      newRange.insertNode(img);
-    } else {
-      const selection = window.getSelection();
-      if (selection && selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0);
-        range.insertNode(img);
-        range.setStartAfter(img);
-        range.setEndAfter(img);
-        selection.removeAllRanges();
-        selection.addRange(range);
-      }
+      hasSelectedText = true;
     }
-  };
+  
+    // Create modal overlay
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    `;
+  
+    // Modal content
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      min-width: 400px;
+    `;
+  
+    const title = document.createElement('h3');
+    title.textContent = 'Insert Image';
+    title.style.cssText = 'margin: 0 0 15px 0; font-size: 18px;';
+  
+    const urlLabel = document.createElement('label');
+    urlLabel.textContent = 'Image URL:';
+    urlLabel.style.cssText = 'display: block; margin-bottom: 5px; font-weight: bold;';
+  
+    const urlInput = document.createElement('input');
+    urlInput.type = 'url';
+    urlInput.placeholder = 'https://example.com/image.jpg';
+    urlInput.style.cssText = `
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    `;
+  
+    const buttonContainer = document.createElement('div');
+    buttonContainer.style.cssText = 'display: flex; gap: 10px; justify-content: flex-end;';
+  
+    const cancelButton = document.createElement('button');
+    cancelButton.textContent = 'Cancel';
+    cancelButton.style.cssText = `
+      padding: 8px 16px;
+      border: 1px solid #ccc;
+      background: white;
+      border-radius: 4px;
+      cursor: pointer;
+    `;
+  
+    const insertButton = document.createElement('button');
+    insertButton.textContent = 'Insert Image';
+    insertButton.style.cssText = `
+      padding: 8px 16px;
+      border: none;
+      background: #007bff;
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+    `;
+  
+    modalContent.appendChild(title);
+    modalContent.appendChild(urlLabel);
+    modalContent.appendChild(urlInput);
+    buttonContainer.appendChild(cancelButton);
+    buttonContainer.appendChild(insertButton);
+    modalContent.appendChild(buttonContainer);
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+  
+    // Focus input
+    urlInput.focus();
+  
+    const cleanup = () => {
+      document.body.removeChild(modal);
+    };
+  
+    cancelButton.onclick = cleanup;
+  
+    insertButton.onclick = () => {
+      const imageUrl = urlInput.value.trim();
+      if (!imageUrl) {
+        alert("Please enter a valid image URL");
+        return;
+      }
+
+      // Validate URL
+      try {
+        new URL(imageUrl);
+      } catch {
+        alert('Please enter a valid image URL');
+        return;
+      }
+
+      const img = document.createElement('img');
+      img.src = imageUrl;
+      img.alt = 'Image';
+      img.style.maxWidth = '100%';
+      img.style.height = 'auto';
+
+      if (savedRange) {
+        const selection = window.getSelection();
+        selection?.removeAllRanges();
+        selection?.addRange(savedRange);
+
+        if (hasSelectedText) {
+          // Replace selected text with image
+          savedRange.deleteContents();
+          savedRange.insertNode(img);
+        } else {
+          // Insert at cursor
+          savedRange.insertNode(img);
+        }
+      } else if (editorRef.current) {
+        // Fallback: append at end
+        editorRef.current.appendChild(img);
+      }
+
+      cleanup();
+    };
+  };  
+  
 
   // Function to insert tables
   const insertTable = (savedRange: Range | null) => {
