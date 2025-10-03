@@ -726,33 +726,91 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
 
   // Function to apply lists
   const applyList = (listType: string, savedRange: Range | null) => {
-    if (!savedRange || savedRange.collapsed) return;
-    
     if (editorRef.current) {
       editorRef.current.focus();
     }
-    
-    const newRange = document.createRange();
-    newRange.setStart(savedRange.startContainer, savedRange.startOffset);
-    newRange.setEnd(savedRange.endContainer, savedRange.endOffset);
-    
-    const selection = window.getSelection();
-    if (selection) {
-      selection.removeAllRanges();
-      selection.addRange(newRange);
+  
+    let hasSelectedText = false;
+    if (savedRange && !savedRange.collapsed) {
+      hasSelectedText = true;
     }
-    
-    const selectedText = newRange.toString();
-    if (selectedText) {
+  
+    if (savedRange) {
+      const selection = window.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(savedRange);
+  
+      if (hasSelectedText) {
+        // Case 1: Text is selected - convert each line to separate list item
+        const selectedText = savedRange.toString();
+        const lines = selectedText.split('\n').filter(line => line.trim() !== '');
+  
+        const list = document.createElement(listType);
+  
+        // Inline styles for ordered/unordered list
+        if (listType === 'ul') {
+          list.style.listStyleType = 'disc';
+        } else if (listType === 'ol') {
+          list.style.listStyleType = 'decimal';
+        }
+        list.style.margin = '10px 0';
+        list.style.paddingLeft = '20px';
+  
+        // Create a list item for each non-empty line
+        lines.forEach(line => {
+          const listItem = document.createElement('li');
+          listItem.textContent = line.trim();
+          listItem.style.marginBottom = '5px';
+          listItem.style.lineHeight = '1.5';
+          list.appendChild(listItem);
+        });
+  
+        savedRange.deleteContents();
+        savedRange.insertNode(list);
+      } else {
+        // Case 2: No text selected - insert empty list at cursor position
+        const list = document.createElement(listType);
+  
+        // Inline styles for ordered/unordered list
+        if (listType === 'ul') {
+          list.style.listStyleType = 'disc';
+        } else if (listType === 'ol') {
+          list.style.listStyleType = 'decimal';
+        }
+        list.style.margin = '10px 0';
+        list.style.paddingLeft = '20px';
+  
+        const listItem = document.createElement('li');
+        listItem.textContent = 'List item';
+        listItem.style.marginBottom = '5px';
+        listItem.style.lineHeight = '1.5';
+        list.appendChild(listItem);
+  
+        savedRange.insertNode(list);
+      }
+    } else if (editorRef.current) {
+      // Fallback: append at end
       const list = document.createElement(listType);
+  
+      // Inline styles for ordered/unordered list
+      if (listType === 'ul') {
+        list.style.listStyleType = 'disc';
+      } else if (listType === 'ol') {
+        list.style.listStyleType = 'decimal';
+      }
+      list.style.margin = '10px 0';
+      list.style.paddingLeft = '20px';
+  
       const listItem = document.createElement('li');
-      listItem.textContent = selectedText;
+      listItem.textContent = 'List item';
+      listItem.style.marginBottom = '5px';
+      listItem.style.lineHeight = '1.5';
       list.appendChild(listItem);
-      
-      newRange.deleteContents();
-      newRange.insertNode(list);
+  
+      editorRef.current.appendChild(list);
     }
   };
+  
 
   // Function to apply links
   const applyLink = (savedRange: Range | null) => {
