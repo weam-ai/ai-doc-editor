@@ -72,7 +72,7 @@ export default function EditorPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
-  const [chatHistory, setChatHistory] = useState<Array<{type: 'user' | 'ai', message: string}>>([]);
+  const [chatHistory, setChatHistory] = useState<Array<{type: 'user', message: string, response: string}>>([]);
   const [contentVersion, setContentVersion] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [docRequest, setDocRequest] = useState('');
@@ -171,6 +171,14 @@ export default function EditorPage() {
         setContentHtml(doc.contentHtml);
         // Check if this is a new document that needs saving
         setHasUnsavedChanges(!doc._id.startsWith('temp_') && doc._id.length < 24);
+        
+        // Load chat history for this document (only for saved documents)
+        if (doc._id && !doc._id.startsWith('temp_') && doc._id.length >= 24) {
+          console.log('Frontend - Loading chat history for saved document:', doc._id);
+          loadChatHistory(doc._id);
+        } else {
+          console.log('Frontend - Skipping chat history load for temporary document:', doc._id);
+        }
       } catch (error) {
         console.error('Error parsing stored document:', error);
         createDefaultDocument();
@@ -375,6 +383,13 @@ export default function EditorPage() {
         contentHtml: contentSnapshot.contentHtml
       }));
       
+      // Load chat history for the newly saved document
+      if (savedDoc._id) {
+        console.log('Frontend - Document saved with ID:', savedDoc._id);
+        console.log('Frontend - Now loading chat history for saved document...');
+        await loadChatHistory(savedDoc._id);
+      }
+      
     } catch (error) {
       console.error('Error saving document:', error);
       toast({
@@ -408,14 +423,80 @@ export default function EditorPage() {
       }, 2000); // Wait 2 seconds to ensure all effects have completed
     }
   };
-  
 
+  // Load chat history for a document
+  const loadChatHistory = async (documentId: string) => {
+    try {
+      console.log('Frontend - Loading chat history for document:', documentId);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_PATH}/api/chat-history?documentId=${documentId}`);
+      
+      if (response.ok) {
+        const chatData = await response.json();
+        console.log('Frontend - Chat history response:', chatData);
+        
+        if (chatData.messages && Array.isArray(chatData.messages)) {
+          // Ensure proper typing for messages
+          const typedMessages = chatData.messages.map((msg: any) => ({
+            type: msg.type as 'user',
+            message: msg.message,
+            response: msg.response || ''
+          }));
+          console.log('Frontend - Setting chat history:', typedMessages);
+          setChatHistory(typedMessages);          
+        } else {
+          console.log('Frontend - No messages found in chat data');
+        }
+      } else {
+        console.log('Frontend - Chat history API response not ok:', response.status);
+      }
+    } catch (error) {
+      console.error('Frontend - Error loading chat history:', error);
+      // Don't show error to user as this is not critical
+    }
+  };
+
+  // Save chat history for a document
+  const saveChatHistory = async (documentId: string, messages: Array<{type: 'user', message: string, response: string}>) => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_PATH}/api/chat-history`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          documentId: documentId,
+          messages: messages,
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Frontend - Failed to save chat history:', response.status, errorText);
+      } else {
+        console.log('Frontend - Chat history saved successfully');
+      }
+    } catch (error) {
+      console.error('Frontend - Error saving chat history:', error);
+      // Don't show error to user as this is not critical
+    }
+  };
 
   const handleDocRequest = async () => {
     if (!docRequest.trim()) return;
 
     const userMessage = docRequest;
-    setChatHistory(prev => [...prev, { type: 'user', message: userMessage }]);
+    const aiResponseMessage = `I've updated your document based on your request: "${userMessage}"`;
+    
+    // Create new message with both user question and AI response
+    // Add user message to chat history immediately
+    const newMessage: {type: 'user', message: string, response: string} = {
+      type: 'user',
+      message: userMessage,
+      response: '' // Will be updated after AI response
+    };
+    
+    const newChatHistory: Array<{type: 'user', message: string, response: string}> = [...chatHistory, newMessage];
+    setChatHistory(newChatHistory);
     setDocRequest('');
     
     // Show loading immediately after button click
@@ -430,8 +511,21 @@ export default function EditorPage() {
       setHasUnsavedChanges(true);
       setContentVersion(prev => prev + 1); // Force editor re-render
       
-      // Add AI response to chat history
-      setChatHistory(prev => [...prev, { type: 'ai', message: `I've updated your document based on your request: "${userMessage}"` }]);
+      // Update the last message with AI response
+      const finalChatHistory: Array<{type: 'user', message: string, response: string}> = [
+        ...chatHistory,
+        {
+          type: 'user',
+          message: userMessage,
+          response: aiResponseMessage
+        }
+      ];
+      setChatHistory(finalChatHistory);
+      
+      // Save chat history to database
+      if (document && document._id) {
+        await saveChatHistory(document._id, finalChatHistory);
+      }
       
       toast({
         title: 'Document updated',
@@ -444,14 +538,17 @@ export default function EditorPage() {
         description: 'Failed to process your request. Please try again.',
         variant: 'destructive',
       });
+      
+      // Remove the user message from chat history if there was an error
+      setChatHistory(prev => prev.slice(0, -1));
     } finally {
       setIsLoading(false);
     }
   };
 
   const generateAIResponse = async (request: string, currentContent: string) => {
-    // console.log('AI Request:', request);
-    // console.log('Current content length:', currentContent.length);
+    console.log('AI Request:', request);
+    console.log('Current content length:', currentContent.length);
     
     // Detect if this is a new/template document or an existing document with real content
     const isNewOrTemplateDocument = (content: string) => {
@@ -471,6 +568,50 @@ export default function EditorPage() {
         return true;
       }
       
+      // Check for form input placeholders
+      if (content.includes('placeholder=') && (
+          content.includes('Insert name here') ||
+          content.includes('Insert role here') ||
+          content.includes('placeholder="Insert') ||
+          content.includes('placeholder="Enter') ||
+          content.includes('placeholder="Type') ||
+          content.includes('placeholder="Add') ||
+          content.includes('placeholder="Write') ||
+          content.includes('placeholder="Fill') ||
+          content.includes('placeholder="Select') ||
+          content.includes('placeholder="Choose')
+        )) {
+        return true;
+      }
+      
+      // Check for table content placeholders
+      if (content.includes('HH:MM:SS AM/PM') ||
+          content.includes('This is what the text looks like when it\'s inside a table') ||
+          content.includes('You can even make checklists') ||
+          content.includes('Now you can check on your list') ||
+          content.includes('Have another box to tick')) {
+        return true;
+      }
+      
+      // Check for Weekly Progress Report template
+      if (content.includes('GOLDEN WING HOTEL') ||
+          content.includes('Weekly Progress Report') ||
+          (content.includes('TIME') && content.includes('TASK') && content.includes('REPORT')) ||
+          content.includes('Insert name here') ||
+          content.includes('Insert role here')) {
+        return true;
+      }
+      
+      // Check for common template patterns
+      if (content.includes('placeholder=') && content.includes('input')) {
+        return true;
+      }
+      
+      // Check for any form elements that might need filling
+      if (content.includes('<input') || content.includes('<textarea') || content.includes('<select')) {
+        return true;
+      }
+      
       // If content is very short (less than 100 chars), likely new
       if (content.trim().length < 100) {
         return true;
@@ -479,7 +620,65 @@ export default function EditorPage() {
       return false;
     };
     
-    const isModification = !isNewOrTemplateDocument(currentContent);
+    // Check if this is a content generation request (like "Generate a wordpress blog")
+    const isContentGenerationRequest = (request: string) => {
+      const lowerRequest = request.toLowerCase();
+      return lowerRequest.includes('generate') || 
+             lowerRequest.includes('create') || 
+             lowerRequest.includes('write') || 
+             lowerRequest.includes('make') ||
+             lowerRequest.includes('build') ||
+             lowerRequest.includes('design') ||
+             lowerRequest.includes('develop');
+    };
+    
+    const isTemplate = isNewOrTemplateDocument(currentContent);
+    
+    // Force modification mode for form filling requests
+    const isFormFillingRequest = request.toLowerCase().includes('tick') || 
+                                request.toLowerCase().includes('checkbox') || 
+                                request.toLowerCase().includes('fill') || 
+                                request.toLowerCase().includes('add john') ||
+                                request.toLowerCase().includes('insert name') ||
+                                request.toLowerCase().includes('insert role') ||
+                                request.toLowerCase().includes('random data') ||
+                                request.toLowerCase().includes('dummy');
+    
+    // Also check if content has form elements that need filling
+    const hasFormElements = currentContent.includes('<input') || 
+                           currentContent.includes('placeholder=') ||
+                           currentContent.includes('Insert name here') ||
+                           currentContent.includes('Insert role here') ||
+                           currentContent.includes('GOLDEN WING HOTEL') ||
+                           currentContent.includes('Weekly Progress Report');
+    
+    // ALWAYS force modification if we have form elements and a form filling request
+    // Also force modification for any request containing "fill" and "form"
+    const isFillFormRequest = request.toLowerCase().includes('fill') && request.toLowerCase().includes('form');
+    
+    // For blank documents with content generation requests, treat as new document creation
+    // For blank documents with modification requests, treat as modification
+    const isBlankDocument = isTemplate && (currentContent.includes('Start writing your content here...') || 
+                                          currentContent.includes('New Document'));
+    
+    const isModification = hasFormElements && isFormFillingRequest ? true : 
+                          isFillFormRequest ? true :
+                          (isBlankDocument && isContentGenerationRequest(request)) ? false :
+                          (!isTemplate || isFormFillingRequest || hasFormElements);
+    console.log('Is template:', isTemplate);
+    console.log('Is form filling request:', isFormFillingRequest);
+    console.log('Is fill form request:', isFillFormRequest);
+    console.log('Has form elements:', hasFormElements);
+    console.log('Is blank document:', isBlankDocument);
+    console.log('Is content generation request:', isContentGenerationRequest(request));
+    console.log('Is modification:', isModification);
+    console.log('Current content preview:', currentContent.substring(0, 500));
+    console.log('Contains GOLDEN WING HOTEL:', currentContent.includes('GOLDEN WING HOTEL'));
+    console.log('Contains Weekly Progress Report:', currentContent.includes('Weekly Progress Report'));
+    console.log('Contains Insert name here:', currentContent.includes('Insert name here'));
+    console.log('Contains Insert role here:', currentContent.includes('Insert role here'));
+    console.log('Contains input elements:', currentContent.includes('<input'));
+    console.log('Contains placeholder:', currentContent.includes('placeholder='));
     
     try {
       // Call OpenAI API to handle the request intelligently
@@ -501,9 +700,9 @@ export default function EditorPage() {
       }
 
       const data = await response.json();
-      // console.log('OpenAI response received:', data);
-      // console.log('Response contentHtml length:', data.contentHtml?.length);
-      // console.log('Response contentHtml starts with:', data.contentHtml?.substring(0, 200));
+      console.log('OpenAI response received:', data);
+      console.log('Response contentHtml length:', data.contentHtml?.length);
+      console.log('Response contentHtml starts with:', data.contentHtml?.substring(0, 200));
       
       if (data.contentHtml && data.contentHtml.trim().startsWith('<')) {
         // console.log('Returning HTML content');
@@ -513,6 +712,21 @@ export default function EditorPage() {
         // This allows ChatGPT-like responses to be displayed as-is
         console.log('New document creation - returning raw content');
         return data.content;
+      } else if (isBlankDocument && isContentGenerationRequest(request) && data.content) {
+        // Special case: for blank documents with content generation requests,
+        // if we get content but no HTML, wrap it in basic HTML structure
+        console.log('Blank document content generation - wrapping content in HTML');
+        return `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generated Document</title>
+</head>
+<body>
+    <div>${data.content}</div>
+</body>
+</html>`;
       } else {
         // Fallback if no valid content
         console.warn('AI response has no valid content, falling back to original content');
@@ -695,15 +909,32 @@ export default function EditorPage() {
                     </div>
                   ) : (
                     chatHistory.map((message, index) => (
-                      <div
-                        key={index}
-                        className={`p-3 rounded-lg ${
-                          message.type === 'user'
-                            ? 'bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-100 ml-8'
-                            : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 mr-8'
-                        }`}
-                      >
-                        <p className="text-sm">{message.message}</p>
+                      <div key={index} className="space-y-2">
+                        {/* User Message */}
+                        <div className="p-3 rounded-lg bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-100 ml-8">
+                          <p className="text-sm font-medium">You:</p>
+                          <p className="text-sm">{message.message}</p>
+                        </div>
+                        
+                        {/* AI Response */}
+                        {message.response && (
+                          <div className="p-3 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 mr-8">
+                            <p className="text-sm font-medium">AI Assistant:</p>
+                            <p className="text-sm">{message.response}</p>
+                          </div>
+                        )}
+                        
+                        {/* Loading indicator for current message */}
+                        {!message.response && index === chatHistory.length - 1 && (
+                          <div className="p-3 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 mr-8">
+                            <p className="text-sm font-medium">AI Assistant:</p>
+                            <div className="flex items-center space-x-1">
+                              <div className="w-2 h-2 rounded-full animate-bounce bg-gray-500"></div>
+                              <div className="w-2 h-2 rounded-full animate-bounce bg-gray-500" style={{ animationDelay: '0.1s' }}></div>
+                              <div className="w-2 h-2 rounded-full animate-bounce bg-gray-500" style={{ animationDelay: '0.2s' }}></div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))
                   )}
@@ -736,7 +967,7 @@ export default function EditorPage() {
                     disabled={!docRequest.trim() || isLoading}
                     className="w-full"
                   >
-                    {isLoading ? 'Processing...' : 'Send Request'}
+                    {isLoading ? 'Processing...' : 'Send'}
                   </Button>
                 </div>
               </div>
