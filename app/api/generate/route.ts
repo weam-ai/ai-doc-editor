@@ -112,7 +112,12 @@ function trackChanges(oldContent: string, newContent: string, prompt: string): {
   const lowerPrompt = prompt.toLowerCase();
   
   if (lowerPrompt.includes('change') || lowerPrompt.includes('modify') || lowerPrompt.includes('update')) {
-    changes.push(`Applied requested changes: "${prompt}"`);
+    // Check if it's a role/job title change
+    if (lowerPrompt.includes('to') && (lowerPrompt.includes('designer') || lowerPrompt.includes('engineer') || lowerPrompt.includes('manager') || lowerPrompt.includes('developer'))) {
+      changes.push(`Updated role and relevant information: "${prompt}"`);
+    } else {
+      changes.push(`Applied requested changes: "${prompt}"`);
+    }
   }
   
   if (lowerPrompt.includes('add') || lowerPrompt.includes('insert')) {
@@ -197,7 +202,14 @@ export async function POST(request: NextRequest) {
         - Select radio buttons appropriately if requested
         - Ensure every form field has a plausible random value according to its type
     15. If user asks to "populate table with example content", fill table cells with relevant realistic sample data
-    16. ALWAYS make the actual changes requested - do not just acknowledge the request
+    16. For job title/role changes, intelligently update all relevant information:
+        - Job title/position name
+        - Job description and responsibilities to match the new role
+        - Skills section to include relevant technical and soft skills for the new role
+        - Experience descriptions to reflect the new role's typical tasks and achievements
+        - Education/certifications if relevant to the new field
+        - Any other role-specific information (projects, tools, methodologies)
+    17. ALWAYS make the actual changes requested - do not just acknowledge the request
     
     IMPORTANT: You MUST actually modify the HTML content. Do not just say you did it - actually return the modified HTML with the changes applied.
     
@@ -222,6 +234,17 @@ export async function POST(request: NextRequest) {
     - If you see "HH:MM:SS AM/PM" → replace with "09:30:00 AM" or similar
     - If you see checkboxes → add checked="checked" to some of them
     - If you see generic table content → replace with realistic task descriptions
+
+    SPECIFIC INSTRUCTIONS FOR ROLE/JOB TITLE CHANGES:
+    - When changing job titles, be intelligent about understanding the role transformation:
+      * Research and understand what the new role typically involves
+      * Update skills to include relevant technical and soft skills for the new role
+      * Modify job descriptions to reflect typical responsibilities of the new role
+      * Update experience bullet points to match the new role's common tasks and achievements
+      * Adjust education/certifications to be relevant to the new field
+      * Update any role-specific sections (portfolio items, project descriptions, tools, methodologies)
+      * Ensure all content is coherent and relevant to the new position
+    - Be thorough in your transformation - don't just change the title, update everything that should change
 
     DO NOT create a new document. MODIFY the existing one. Return the SAME document structure with filled form fields.`;
 } else {
@@ -314,6 +337,37 @@ Remember: You're not just generating content, you're being a helpful assistant w
           // If AI didn't make the change, try to make it ourselves
           if (hasOriginalText && !hasModifiedText && prompt.toLowerCase().includes('my logo')) {
             htmlContent = htmlContent.replace(/Your Logo/g, 'My Logo');
+          }
+        }
+
+        // Additional validation for role changes
+        if (prompt.toLowerCase().includes('change') && (prompt.toLowerCase().includes('to') || prompt.toLowerCase().includes('into'))) {
+          console.log('Detected potential role change request:', prompt);
+          
+          // Check if it's a job title change by looking for common patterns
+          const roleChangePatterns = [
+            /change\s+(\w+\s*\w*)\s+to\s+(\w+\s*\w*)/i,
+            /change\s+(\w+\s*\w*)\s+into\s+(\w+\s*\w*)/i,
+            /update\s+(\w+\s*\w*)\s+to\s+(\w+\s*\w*)/i,
+            /convert\s+(\w+\s*\w*)\s+to\s+(\w+\s*\w*)/i
+          ];
+          
+          for (const pattern of roleChangePatterns) {
+            const match = prompt.match(pattern);
+            if (match) {
+              const fromRole = match[1].trim();
+              const toRole = match[2].trim();
+              console.log(`Role change detected: ${fromRole} → ${toRole}`);
+              
+              // Log the role change for monitoring purposes
+              console.log(`Role change from "${fromRole}" to "${toRole}" - AI should update relevant content`);
+              
+              // Basic validation: ensure the new role title appears in the content
+              if (!htmlContent.toLowerCase().includes(toRole.toLowerCase())) {
+                console.warn(`AI may not have updated the role title to "${toRole}"`);
+              }
+              break;
+            }
           }
         }
       } else {
