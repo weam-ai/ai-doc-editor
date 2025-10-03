@@ -111,9 +111,26 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
   // Set initial content when component mounts or content prop changes from external source
   useEffect(() => {
     if (editorRef.current) {
-      if (content && !isEditing) {
+      // Only update if we're not currently editing AND the content has actually changed
+      const currentContent = editorRef.current.innerHTML;
+      
+      if (content && !isEditing && currentContent !== content) {
+        // Before updating, check if there are any focused interactive elements
+        const activeElement = document.activeElement as HTMLElement;
+        const isInteractiveElementFocused = activeElement && 
+                                           editorRef.current.contains(activeElement) &&
+                                           (activeElement.tagName === 'INPUT' || 
+                                            activeElement.tagName === 'TEXTAREA' || 
+                                            activeElement.tagName === 'SELECT');
+        
+        // Don't update if an interactive element is focused
+        if (isInteractiveElementFocused) {
+          console.log('Interactive element is focused, skipping content update');
+          return;
+        }
+        
         editorRef.current.innerHTML = content;
-      } else if (!content) {
+      } else if (!content && !currentContent) {
         editorRef.current.innerHTML = '<p>Click here to start editing...</p>';
       }
     }
@@ -506,6 +523,137 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
     return () => document.removeEventListener('selectionchange', handleSelectionChange);
   }, [onFontFamilyChange]);
 
+  // Function to sync input values to HTML attributes for persistence
+  const syncInputValuesToAttributes = () => {
+    if (!editorRef.current) return;
+    
+    // Update all input elements to have their current value in the value attribute
+    const inputs = editorRef.current.querySelectorAll('input');
+    inputs.forEach(input => {
+      const inputElement = input as HTMLInputElement;
+      if (inputElement.type === 'checkbox') {
+        // For checkboxes, sync the checked state
+        if (inputElement.checked) {
+          inputElement.setAttribute('checked', 'checked');
+        } else {
+          inputElement.removeAttribute('checked');
+        }
+      } else if (inputElement.type === 'radio') {
+        // For radio buttons, sync the checked state
+        if (inputElement.checked) {
+          inputElement.setAttribute('checked', 'checked');
+        } else {
+          inputElement.removeAttribute('checked');
+        }
+      } else {
+        // For text inputs, sync the value
+        inputElement.setAttribute('value', inputElement.value);
+      }
+    });
+    
+    // Update all textarea elements
+    const textareas = editorRef.current.querySelectorAll('textarea');
+    textareas.forEach(textarea => {
+      const textareaElement = textarea as HTMLTextAreaElement;
+      textareaElement.textContent = textareaElement.value;
+    });
+    
+    // Update all select elements
+    const selects = editorRef.current.querySelectorAll('select');
+    selects.forEach(select => {
+      const selectElement = select as HTMLSelectElement;
+      const options = selectElement.querySelectorAll('option');
+      options.forEach((option, index) => {
+        if (index === selectElement.selectedIndex) {
+          option.setAttribute('selected', 'selected');
+        } else {
+          option.removeAttribute('selected');
+        }
+      });
+    });
+    
+    console.log('Synced all input values to HTML attributes');
+  };
+
+  // Listen for changes in input fields and save them
+  useEffect(() => {
+    if (!editorRef.current) return;
+    
+    const handleInputChange = (e: Event) => {
+      const target = e.target as HTMLInputElement | HTMLTextAreaElement;
+      console.log('Input field changed:', target.tagName, target.value);
+      
+      // Sync the value to the attribute immediately
+      if (target.tagName === 'INPUT') {
+        const inputElement = target as HTMLInputElement;
+        if (inputElement.type === 'checkbox' || inputElement.type === 'radio') {
+          if (inputElement.checked) {
+            inputElement.setAttribute('checked', 'checked');
+          } else {
+            inputElement.removeAttribute('checked');
+          }
+        } else {
+          inputElement.setAttribute('value', inputElement.value);
+        }
+      } else if (target.tagName === 'TEXTAREA') {
+        target.textContent = target.value;
+      }
+      
+      // Trigger a delayed save to persist the input value
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+      
+      debounceTimeoutRef.current = setTimeout(() => {
+        // Sync all values before saving
+        syncInputValuesToAttributes();
+        
+        if (editorRef.current) {
+          const currentContent = editorRef.current.innerHTML;
+          onChange(currentContent);
+          console.log('Saved content with input values');
+        }
+      }, 500); // Longer debounce for input fields
+    };
+    
+    // Attach change listeners to all input/textarea/select elements
+    const attachListeners = () => {
+      if (!editorRef.current) return;
+      
+      const inputs = editorRef.current.querySelectorAll('input, textarea, select');
+      inputs.forEach(input => {
+        input.addEventListener('input', handleInputChange);
+        input.addEventListener('change', handleInputChange);
+        input.addEventListener('blur', handleInputChange);
+      });
+    };
+    
+    // Attach listeners initially
+    attachListeners();
+    
+    // Use MutationObserver to detect when new input elements are added
+    const observer = new MutationObserver(() => {
+      attachListeners();
+    });
+    
+    observer.observe(editorRef.current, {
+      childList: true,
+      subtree: true
+    });
+    
+    return () => {
+      observer.disconnect();
+      if (editorRef.current) {
+        const inputs = editorRef.current.querySelectorAll('input, textarea, select');
+        inputs.forEach(input => {
+          input.removeEventListener('input', handleInputChange);
+          input.removeEventListener('change', handleInputChange);
+          input.removeEventListener('blur', handleInputChange);
+        });
+      }
+    };
+  }, [onChange]);
+
   // Function to apply text alignment
   const applyAlignment = (alignment: string, savedRange: Range | null) => {
     if (!savedRange || savedRange.collapsed) return;
@@ -578,62 +726,260 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
 
   // Function to apply lists
   const applyList = (listType: string, savedRange: Range | null) => {
-    if (!savedRange || savedRange.collapsed) return;
-    
     if (editorRef.current) {
       editorRef.current.focus();
     }
-    
-    const newRange = document.createRange();
-    newRange.setStart(savedRange.startContainer, savedRange.startOffset);
-    newRange.setEnd(savedRange.endContainer, savedRange.endOffset);
-    
-    const selection = window.getSelection();
-    if (selection) {
-      selection.removeAllRanges();
-      selection.addRange(newRange);
+  
+    let hasSelectedText = false;
+    if (savedRange && !savedRange.collapsed) {
+      hasSelectedText = true;
     }
-    
-    const selectedText = newRange.toString();
-    if (selectedText) {
+  
+    if (savedRange) {
+      const selection = window.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(savedRange);
+  
+      if (hasSelectedText) {
+        // Case 1: Text is selected - convert each line to separate list item
+        const selectedText = savedRange.toString();
+        const lines = selectedText.split('\n').filter(line => line.trim() !== '');
+  
+        const list = document.createElement(listType);
+  
+        // Inline styles for ordered/unordered list
+        if (listType === 'ul') {
+          list.style.listStyleType = 'disc';
+        } else if (listType === 'ol') {
+          list.style.listStyleType = 'decimal';
+        }
+        list.style.margin = '10px 0';
+        list.style.paddingLeft = '20px';
+  
+        // Create a list item for each non-empty line
+        lines.forEach(line => {
+          const listItem = document.createElement('li');
+          listItem.textContent = line.trim();
+          listItem.style.marginBottom = '5px';
+          listItem.style.lineHeight = '1.5';
+          list.appendChild(listItem);
+        });
+  
+        savedRange.deleteContents();
+        savedRange.insertNode(list);
+      } else {
+        // Case 2: No text selected - insert empty list at cursor position
+        const list = document.createElement(listType);
+  
+        // Inline styles for ordered/unordered list
+        if (listType === 'ul') {
+          list.style.listStyleType = 'disc';
+        } else if (listType === 'ol') {
+          list.style.listStyleType = 'decimal';
+        }
+        list.style.margin = '10px 0';
+        list.style.paddingLeft = '20px';
+  
+        const listItem = document.createElement('li');
+        listItem.textContent = 'List item';
+        listItem.style.marginBottom = '5px';
+        listItem.style.lineHeight = '1.5';
+        list.appendChild(listItem);
+  
+        savedRange.insertNode(list);
+      }
+    } else if (editorRef.current) {
+      // Fallback: append at end
       const list = document.createElement(listType);
+  
+      // Inline styles for ordered/unordered list
+      if (listType === 'ul') {
+        list.style.listStyleType = 'disc';
+      } else if (listType === 'ol') {
+        list.style.listStyleType = 'decimal';
+      }
+      list.style.margin = '10px 0';
+      list.style.paddingLeft = '20px';
+  
       const listItem = document.createElement('li');
-      listItem.textContent = selectedText;
+      listItem.textContent = 'List item';
+      listItem.style.marginBottom = '5px';
+      listItem.style.lineHeight = '1.5';
       list.appendChild(listItem);
-      
-      newRange.deleteContents();
-      newRange.insertNode(list);
+  
+      editorRef.current.appendChild(list);
     }
   };
+  
 
   // Function to apply links
   const applyLink = (savedRange: Range | null) => {
-    if (!savedRange || savedRange.collapsed) return;
-    
-    const url = prompt('Enter URL:');
-    if (!url) return;
-    
     if (editorRef.current) {
       editorRef.current.focus();
     }
-    
-    const newRange = document.createRange();
-    newRange.setStart(savedRange.startContainer, savedRange.startOffset);
-    newRange.setEnd(savedRange.endContainer, savedRange.endOffset);
-    
-    const selection = window.getSelection();
-    if (selection) {
-      selection.removeAllRanges();
-      selection.addRange(newRange);
+  
+    let selectedText = '';
+    let hasSelectedText = false;
+  
+    // Check if there's selected text
+    if (savedRange && !savedRange.collapsed) {
+      selectedText = savedRange.toString();
+      hasSelectedText = true;
     }
-    
-    const link = document.createElement('a');
-    link.href = url;
-    link.textContent = newRange.toString();
-    
-    newRange.deleteContents();
-    newRange.insertNode(link);
-  };
+  
+    // Create modal overlay
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    `;
+  
+    // Modal content
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      min-width: 400px;
+    `;
+  
+    const title = document.createElement('h3');
+    title.textContent = 'Add Link';
+    title.style.cssText = 'margin: 0 0 15px 0; font-size: 18px;';
+  
+    const linkTextLabel = document.createElement('label');
+    linkTextLabel.textContent = 'Link Text:';
+    linkTextLabel.style.cssText = 'display: block; margin-bottom: 5px; font-weight: bold;';
+  
+    const linkTextInput = document.createElement('input');
+    linkTextInput.type = 'text';
+    linkTextInput.value = selectedText;
+    linkTextInput.placeholder = 'Enter link text';
+    linkTextInput.style.cssText = `
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    `;
+  
+    const urlLabel = document.createElement('label');
+    urlLabel.textContent = 'URL:';
+    urlLabel.style.cssText = 'display: block; margin-bottom: 5px; font-weight: bold;';
+  
+    const urlInput = document.createElement('input');
+    urlInput.type = 'url';
+    urlInput.placeholder = 'https://example.com';
+    urlInput.style.cssText = `
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    `;
+  
+    const buttonContainer = document.createElement('div');
+    buttonContainer.style.cssText = 'display: flex; gap: 10px; justify-content: flex-end;';
+  
+    const cancelButton = document.createElement('button');
+    cancelButton.textContent = 'Cancel';
+    cancelButton.style.cssText = `
+      padding: 8px 16px;
+      border: 1px solid #ccc;
+      background: white;
+      border-radius: 4px;
+      cursor: pointer;
+    `;
+  
+    const addButton = document.createElement('button');
+    addButton.textContent = 'Add Link';
+    addButton.style.cssText = `
+      padding: 8px 16px;
+      border: none;
+      background: #007bff;
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+    `;
+  
+    modalContent.appendChild(title);
+    modalContent.appendChild(linkTextLabel);
+    modalContent.appendChild(linkTextInput);
+    modalContent.appendChild(urlLabel);
+    modalContent.appendChild(urlInput);
+    buttonContainer.appendChild(cancelButton);
+    buttonContainer.appendChild(addButton);
+    modalContent.appendChild(buttonContainer);
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+  
+    // Focus logic
+    if (selectedText) {
+      urlInput.focus();
+    } else {
+      linkTextInput.focus();
+    }
+  
+    const cleanup = () => {
+      document.body.removeChild(modal);
+    };
+  
+    // Cancel button
+    cancelButton.onclick = cleanup;
+  
+    // Add link button
+    addButton.onclick = () => {
+      const linkText = linkTextInput.value || urlInput.value;
+      const linkUrl = urlInput.value.trim();
+  
+      if (!linkUrl) {
+        alert("Please enter a valid URL");
+        return;
+      }
+  
+      const a = document.createElement("a");
+      a.href = linkUrl;
+      a.target = "_blank";
+      a.textContent = linkText;
+  
+      // --- INLINE STYLES TO OVERRIDE GLOBAL CSS ---
+      a.style.color = "#007bff";
+      a.style.textDecoration = "underline";
+      a.style.cursor = "pointer";
+  
+      if (savedRange) {
+        const selection = window.getSelection();
+        selection?.removeAllRanges();
+        selection?.addRange(savedRange);
+  
+        if (hasSelectedText) {
+          // Replace selected text
+          savedRange.deleteContents();
+          savedRange.insertNode(a);
+        } else {
+          // Insert at cursor
+          savedRange.insertNode(a);
+        }
+      } else if (editorRef.current) {
+        // Fallback: append at end
+        editorRef.current.appendChild(a);
+      }
+  
+      cleanup();
+    };
+  };  
+  
 
   // Function to remove links
   const removeLink = (savedRange: Range | null) => {
@@ -668,83 +1014,332 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
 
   // Function to insert images
   const insertImage = (savedRange: Range | null) => {
-    const imageUrl = prompt('Enter image URL:');
-    if (!imageUrl) return;
-    
     if (editorRef.current) {
       editorRef.current.focus();
     }
-    
-    const img = document.createElement('img');
-    img.src = imageUrl;
-    img.alt = 'Image';
-    img.style.maxWidth = '100%';
-    img.style.height = 'auto';
-    
+
+    let hasSelectedText = false;
     if (savedRange && !savedRange.collapsed) {
-      const newRange = document.createRange();
-      newRange.setStart(savedRange.startContainer, savedRange.startOffset);
-      newRange.setEnd(savedRange.endContainer, savedRange.endOffset);
-      newRange.deleteContents();
-      newRange.insertNode(img);
-    } else {
-      const selection = window.getSelection();
-      if (selection && selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0);
-        range.insertNode(img);
-        range.setStartAfter(img);
-        range.setEndAfter(img);
-        selection.removeAllRanges();
-        selection.addRange(range);
-      }
+      hasSelectedText = true;
     }
-  };
+  
+    // Create modal overlay
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    `;
+  
+    // Modal content
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      min-width: 400px;
+    `;
+  
+    const title = document.createElement('h3');
+    title.textContent = 'Insert Image';
+    title.style.cssText = 'margin: 0 0 15px 0; font-size: 18px;';
+  
+    const urlLabel = document.createElement('label');
+    urlLabel.textContent = 'Image URL:';
+    urlLabel.style.cssText = 'display: block; margin-bottom: 5px; font-weight: bold;';
+  
+    const urlInput = document.createElement('input');
+    urlInput.type = 'url';
+    urlInput.placeholder = 'https://example.com/image.jpg';
+    urlInput.style.cssText = `
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    `;
+  
+    const buttonContainer = document.createElement('div');
+    buttonContainer.style.cssText = 'display: flex; gap: 10px; justify-content: flex-end;';
+  
+    const cancelButton = document.createElement('button');
+    cancelButton.textContent = 'Cancel';
+    cancelButton.style.cssText = `
+      padding: 8px 16px;
+      border: 1px solid #ccc;
+      background: white;
+      border-radius: 4px;
+      cursor: pointer;
+    `;
+  
+    const insertButton = document.createElement('button');
+    insertButton.textContent = 'Insert Image';
+    insertButton.style.cssText = `
+      padding: 8px 16px;
+      border: none;
+      background: #007bff;
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+    `;
+  
+    modalContent.appendChild(title);
+    modalContent.appendChild(urlLabel);
+    modalContent.appendChild(urlInput);
+    buttonContainer.appendChild(cancelButton);
+    buttonContainer.appendChild(insertButton);
+    modalContent.appendChild(buttonContainer);
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+  
+    // Focus input
+    urlInput.focus();
+  
+    const cleanup = () => {
+      document.body.removeChild(modal);
+    };
+  
+    cancelButton.onclick = cleanup;
+  
+    insertButton.onclick = () => {
+      const imageUrl = urlInput.value.trim();
+      if (!imageUrl) {
+        alert("Please enter a valid image URL");
+        return;
+      }
+
+      // Validate URL
+      try {
+        new URL(imageUrl);
+      } catch {
+        alert('Please enter a valid image URL');
+        return;
+      }
+
+      const img = document.createElement('img');
+      img.src = imageUrl;
+      img.alt = 'Image';
+      img.style.maxWidth = '100%';
+      img.style.height = 'auto';
+
+      if (savedRange) {
+        const selection = window.getSelection();
+        selection?.removeAllRanges();
+        selection?.addRange(savedRange);
+
+        if (hasSelectedText) {
+          // Replace selected text with image
+          savedRange.deleteContents();
+          savedRange.insertNode(img);
+        } else {
+          // Insert at cursor
+          savedRange.insertNode(img);
+        }
+      } else if (editorRef.current) {
+        // Fallback: append at end
+        editorRef.current.appendChild(img);
+      }
+
+      cleanup();
+    };
+  };  
+  
 
   // Function to insert tables
   const insertTable = (savedRange: Range | null) => {
-    const rows = prompt('Number of rows:', '3');
-    const cols = prompt('Number of columns:', '3');
-    
-    if (!rows || !cols) return;
-    
     if (editorRef.current) {
       editorRef.current.focus();
     }
-    
-    const table = document.createElement('table');
-    table.style.borderCollapse = 'collapse';
-    table.style.width = '100%';
-    table.style.border = '1px solid #ccc';
-    
-    for (let i = 0; i < parseInt(rows); i++) {
-      const row = document.createElement('tr');
-      for (let j = 0; j < parseInt(cols); j++) {
-        const cell = document.createElement(i === 0 ? 'th' : 'td');
-        cell.textContent = i === 0 ? `Header ${j + 1}` : `Cell ${i}-${j + 1}`;
-        cell.style.border = '1px solid #ccc';
-        cell.style.padding = '8px';
-        row.appendChild(cell);
-      }
-      table.appendChild(row);
-    }
-    
+
+    let hasSelectedText = false;
     if (savedRange && !savedRange.collapsed) {
-      const newRange = document.createRange();
-      newRange.setStart(savedRange.startContainer, savedRange.startOffset);
-      newRange.setEnd(savedRange.endContainer, savedRange.endOffset);
-      newRange.deleteContents();
-      newRange.insertNode(table);
-    } else {
-      const selection = window.getSelection();
-      if (selection && selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0);
-        range.insertNode(table);
-        range.setStartAfter(table);
-        range.setEndAfter(table);
-        selection.removeAllRanges();
-        selection.addRange(range);
-      }
+      hasSelectedText = true;
     }
+
+    // Create modal overlay
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    `;
+
+    // Modal content
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      min-width: 400px;
+    `;
+
+    const title = document.createElement('h3');
+    title.textContent = 'Insert Table';
+    title.style.cssText = 'margin: 0 0 15px 0; font-size: 18px;';
+
+    const rowsLabel = document.createElement('label');
+    rowsLabel.textContent = 'Number of Rows:';
+    rowsLabel.style.cssText = 'display: block; margin-bottom: 5px; font-weight: bold;';
+
+    const rowsInput = document.createElement('input');
+    rowsInput.type = 'number';
+    rowsInput.value = '3';
+    rowsInput.min = '1';
+    rowsInput.max = '20';
+    rowsInput.style.cssText = `
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    `;
+
+    const colsLabel = document.createElement('label');
+    colsLabel.textContent = 'Number of Columns:';
+    colsLabel.style.cssText = 'display: block; margin-bottom: 5px; font-weight: bold;';
+
+    const colsInput = document.createElement('input');
+    colsInput.type = 'number';
+    colsInput.value = '3';
+    colsInput.min = '1';
+    colsInput.max = '20';
+    colsInput.style.cssText = `
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    `;
+
+    const buttonContainer = document.createElement('div');
+    buttonContainer.style.cssText = 'display: flex; gap: 10px; justify-content: flex-end;';
+
+    const cancelButton = document.createElement('button');
+    cancelButton.textContent = 'Cancel';
+    cancelButton.style.cssText = `
+      padding: 8px 16px;
+      border: 1px solid #ccc;
+      background: white;
+      border-radius: 4px;
+      cursor: pointer;
+    `;
+
+    const insertButton = document.createElement('button');
+    insertButton.textContent = 'Insert Table';
+    insertButton.style.cssText = `
+      padding: 8px 16px;
+      border: none;
+      background: #007bff;
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+    `;
+
+    modalContent.appendChild(title);
+    modalContent.appendChild(rowsLabel);
+    modalContent.appendChild(rowsInput);
+    modalContent.appendChild(colsLabel);
+    modalContent.appendChild(colsInput);
+    buttonContainer.appendChild(cancelButton);
+    buttonContainer.appendChild(insertButton);
+    modalContent.appendChild(buttonContainer);
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+
+    // Focus on first input
+    rowsInput.focus();
+
+    const cleanup = () => {
+      document.body.removeChild(modal);
+    };
+
+    const insertTableElement = () => {
+      const rows = parseInt(rowsInput.value);
+      const cols = parseInt(colsInput.value);
+      
+      if (!rows || !cols || rows < 1 || cols < 1) {
+        alert('Please enter valid numbers for rows and columns');
+        return;
+      }
+
+      const table = document.createElement('table');
+      table.style.borderCollapse = 'collapse';
+      table.style.width = '100%';
+      table.style.border = '1px solid #ccc';
+      
+      for (let i = 0; i < rows; i++) {
+        const row = document.createElement('tr');
+        for (let j = 0; j < cols; j++) {
+          const cell = document.createElement(i === 0 ? 'th' : 'td');
+          cell.textContent = i === 0 ? `Header ${j + 1}` : `Cell ${i}-${j + 1}`;
+          cell.style.border = '1px solid #ccc';
+          cell.style.padding = '8px';
+          row.appendChild(cell);
+        }
+        table.appendChild(row);
+      }
+
+      if (savedRange) {
+        const selection = window.getSelection();
+        selection?.removeAllRanges();
+        selection?.addRange(savedRange);
+
+        if (hasSelectedText) {
+          // Replace selected text with table
+          savedRange.deleteContents();
+          savedRange.insertNode(table);
+        } else {
+          // Insert at cursor
+          savedRange.insertNode(table);
+        }
+      } else if (editorRef.current) {
+        // Fallback: append at end
+        editorRef.current.appendChild(table);
+      }
+
+      cleanup();
+    };
+
+    cancelButton.onclick = cleanup;
+    insertButton.onclick = insertTableElement;
+
+    // Handle Enter key
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        insertTableElement();
+      } else if (e.key === 'Escape') {
+        cleanup();
+      }
+    };
+
+    rowsInput.addEventListener('keydown', handleKeyPress);
+    colsInput.addEventListener('keydown', handleKeyPress);
+
+    // Close on backdrop click
+    modal.onclick = (e) => {
+      if (e.target === modal) {
+        cleanup();
+      }
+    };
   };
 
   // Function to apply text color
@@ -1392,6 +1987,20 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
   }, []);
   
   const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
+    // Check if the input event originated from an interactive element
+    const target = e.target as HTMLElement;
+    const isInteractive = target.tagName === 'INPUT' || 
+                          target.tagName === 'TEXTAREA' || 
+                          target.tagName === 'SELECT' || 
+                          target.tagName === 'BUTTON';
+    
+    // If input is from an interactive element, don't update the whole content
+    // This prevents input values from being lost
+    if (isInteractive) {
+      console.log('Input from interactive element, skipping content update');
+      return;
+    }
+    
     const newContent = e.currentTarget.innerHTML;
     
     // Debounce the onChange call to prevent excessive updates
@@ -1419,8 +2028,26 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
     }
   };
   
-  const handleBlur = () => {
+  const handleBlur = (e: React.FocusEvent<HTMLDivElement>) => {
+    // Check if we're focusing into an interactive element within the editor
+    const relatedTarget = e.relatedTarget as HTMLElement;
+    if (relatedTarget && editorRef.current?.contains(relatedTarget)) {
+      const isInteractive = relatedTarget.tagName === 'INPUT' || 
+                           relatedTarget.tagName === 'TEXTAREA' || 
+                           relatedTarget.tagName === 'SELECT' || 
+                           relatedTarget.tagName === 'BUTTON';
+      
+      // If moving to an interactive element within the editor, keep editing state
+      if (isInteractive) {
+        console.log('Moving to interactive element, keeping editing state');
+        return;
+      }
+    }
+    
     setIsEditing(false);
+    
+    // Sync all input values to their HTML attributes before saving
+    syncInputValuesToAttributes();
     
     // Make sure final content is saved when losing focus
     if (editorRef.current) {
@@ -1516,6 +2143,31 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
           .editable-content li {
             margin: 0.25em 0;
           }
+          
+          /* Make interactive elements work properly within contentEditable */
+          .editable-content input,
+          .editable-content textarea,
+          .editable-content select,
+          .editable-content button {
+            pointer-events: auto;
+            user-select: text;
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+          }
+          
+          .editable-content input:focus,
+          .editable-content textarea:focus,
+          .editable-content select:focus {
+            outline: 2px solid rgba(59, 130, 246, 0.5);
+            outline-offset: 2px;
+          }
+          
+          /* Ensure checkboxes are clickable */
+          .editable-content input[type="checkbox"] {
+            cursor: pointer;
+            pointer-events: auto;
+          }
         `}
       </style>
       
@@ -1526,7 +2178,21 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
         onInput={handleInput}
         onFocus={handleFocus}
         onBlur={handleBlur}
-        onClick={() => {
+        onClick={(e) => {
+          // Check if the clicked element is an interactive element (input, textarea, select, button, etc.)
+          const target = e.target as HTMLElement;
+          const isInteractive = target.tagName === 'INPUT' || 
+                                target.tagName === 'TEXTAREA' || 
+                                target.tagName === 'SELECT' || 
+                                target.tagName === 'BUTTON' ||
+                                target.tagName === 'A';
+          
+          // If clicking on interactive element, don't interfere with it
+          if (isInteractive) {
+            console.log('Clicked on interactive element:', target.tagName);
+            return;
+          }
+          
           // Ensure focus is maintained when clicking
           if (editorRef.current) {
             editorRef.current.focus();
@@ -1543,7 +2209,20 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
             }
           }
         }}
-        onMouseUp={() => {
+        onMouseUp={(e) => {
+          // Check if the target is an interactive element
+          const target = e.target as HTMLElement;
+          const isInteractive = target.tagName === 'INPUT' || 
+                                target.tagName === 'TEXTAREA' || 
+                                target.tagName === 'SELECT' || 
+                                target.tagName === 'BUTTON' ||
+                                target.tagName === 'A';
+          
+          // If interacting with interactive element, don't capture selection
+          if (isInteractive) {
+            return;
+          }
+          
           // Capture selection when user finishes selecting text
           const selection = window.getSelection();
           if (selection && selection.rangeCount > 0) {
@@ -1555,7 +2234,20 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
             }
           }
         }}
-        onMouseDown={() => {
+        onMouseDown={(e) => {
+          // Check if the target is an interactive element
+          const target = e.target as HTMLElement;
+          const isInteractive = target.tagName === 'INPUT' || 
+                                target.tagName === 'TEXTAREA' || 
+                                target.tagName === 'SELECT' || 
+                                target.tagName === 'BUTTON' ||
+                                target.tagName === 'A';
+          
+          // If interacting with interactive element, don't capture selection
+          if (isInteractive) {
+            return;
+          }
+          
           // Capture selection before it might be lost
           const selection = window.getSelection();
           if (selection && selection.rangeCount > 0) {
