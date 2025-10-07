@@ -84,7 +84,6 @@ export default function EditorPage() {
   
   // Debug font family changes
   const handleFontFamilyChange = (fontFamily: string | null) => {
-    console.log('Font family changed to:', fontFamily);
     setCurrentFontFamily(fontFamily);
   };
   
@@ -121,23 +120,19 @@ export default function EditorPage() {
   // Get current font family selector value
   const getCurrentFontFamilyValue = (): string => {
     if (!currentFontFamily) {
-      console.log('No current font family set');
       return '';
     }
     
-    console.log('Current font family:', currentFontFamily);
     
     // First try exact match
     let mappedValue = reverseFontMap[currentFontFamily];
     if (mappedValue) {
-      console.log('Exact match found:', mappedValue);
       return mappedValue;
     }
     
     // Try to match by extracting the first font name
     const fontFamily = currentFontFamily.replace(/['"]/g, ''); // Remove quotes
     const firstFont = fontFamily.split(',')[0].trim();
-    console.log('First font name:', firstFont);
     
     // Map based on first font name
     const fontNameMap: { [key: string]: string } = {
@@ -149,7 +144,6 @@ export default function EditorPage() {
     };
     
     mappedValue = fontNameMap[firstFont] || '';
-    console.log('Mapped value:', mappedValue);
     return mappedValue;
   };
   
@@ -175,10 +169,8 @@ export default function EditorPage() {
         
         // Load chat history for this document (only for saved documents)
         if (doc._id && !doc._id.startsWith('temp_') && doc._id.length >= 24) {
-          console.log('Frontend - Loading chat history for saved document:', doc._id);
           loadChatHistory(doc._id);
         } else {
-          console.log('Frontend - Skipping chat history load for temporary document:', doc._id);
         }
       } catch (error) {
         console.error('Error parsing stored document:', error);
@@ -407,8 +399,6 @@ export default function EditorPage() {
       
       // Load chat history for the newly saved document
       if (savedDoc._id) {
-        console.log('Frontend - Document saved with ID:', savedDoc._id);
-        console.log('Frontend - Now loading chat history for saved document...');
         await loadChatHistory(savedDoc._id);
       }
       
@@ -449,12 +439,10 @@ export default function EditorPage() {
   // Load chat history for a document
   const loadChatHistory = async (documentId: string) => {
     try {
-      console.log('Frontend - Loading chat history for document:', documentId);
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_PATH}/api/chat-history?documentId=${documentId}`);
       
       if (response.ok) {
         const chatData = await response.json();
-        console.log('Frontend - Chat history response:', chatData);
         
         if (chatData.messages && Array.isArray(chatData.messages)) {
           // Ensure proper typing for messages
@@ -463,13 +451,10 @@ export default function EditorPage() {
             message: msg.message,
             response: msg.response || ''
           }));
-          console.log('Frontend - Setting chat history:', typedMessages);
           setChatHistory(typedMessages);          
         } else {
-          console.log('Frontend - No messages found in chat data');
         }
       } else {
-        console.log('Frontend - Chat history API response not ok:', response.status);
       }
     } catch (error) {
       console.error('Frontend - Error loading chat history:', error);
@@ -495,7 +480,6 @@ export default function EditorPage() {
         const errorText = await response.text();
         console.error('Frontend - Failed to save chat history:', response.status, errorText);
       } else {
-        console.log('Frontend - Chat history saved successfully');
       }
     } catch (error) {
       console.error('Frontend - Error saving chat history:', error);
@@ -569,8 +553,6 @@ export default function EditorPage() {
   };
 
   const generateAIResponse = async (request: string, currentContent: string) => {
-    console.log('AI Request:', request);
-    console.log('Current content length:', currentContent.length);
     
     // Detect if this is a new/template document or an existing document with real content
     const isNewOrTemplateDocument = (content: string) => {
@@ -687,20 +669,6 @@ export default function EditorPage() {
                           isFillFormRequest ? true :
                           (isBlankDocument && isContentGenerationRequest(request)) ? false :
                           (!isTemplate || isFormFillingRequest || hasFormElements);
-    console.log('Is template:', isTemplate);
-    console.log('Is form filling request:', isFormFillingRequest);
-    console.log('Is fill form request:', isFillFormRequest);
-    console.log('Has form elements:', hasFormElements);
-    console.log('Is blank document:', isBlankDocument);
-    console.log('Is content generation request:', isContentGenerationRequest(request));
-    console.log('Is modification:', isModification);
-    console.log('Current content preview:', currentContent.substring(0, 500));
-    console.log('Contains GOLDEN WING HOTEL:', currentContent.includes('GOLDEN WING HOTEL'));
-    console.log('Contains Weekly Progress Report:', currentContent.includes('Weekly Progress Report'));
-    console.log('Contains Insert name here:', currentContent.includes('Insert name here'));
-    console.log('Contains Insert role here:', currentContent.includes('Insert role here'));
-    console.log('Contains input elements:', currentContent.includes('<input'));
-    console.log('Contains placeholder:', currentContent.includes('placeholder='));
     
     try {
       // Call OpenAI API to handle the request intelligently
@@ -722,22 +690,16 @@ export default function EditorPage() {
       }
 
       const data = await response.json();
-      console.log('OpenAI response received:', data);
-      console.log('Response contentHtml length:', data.contentHtml?.length);
-      console.log('Response contentHtml starts with:', data.contentHtml?.substring(0, 200));
       
       if (data.contentHtml && data.contentHtml.trim().startsWith('<')) {
-        // console.log('Returning HTML content');
         return data.contentHtml;
       } else if (!isModification && data.content) {
         // For new document creation, if no HTML is provided, return the raw content
         // This allows ChatGPT-like responses to be displayed as-is
-        console.log('New document creation - returning raw content');
         return data.content;
       } else if (isBlankDocument && isContentGenerationRequest(request) && data.content) {
         // Special case: for blank documents with content generation requests,
         // if we get content but no HTML, wrap it in basic HTML structure
-        console.log('Blank document content generation - wrapping content in HTML');
         return `<!DOCTYPE html>
 <html>
 <head>

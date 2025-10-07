@@ -38,7 +38,6 @@ export const FontSizeSelector: React.FC<FontSizeSelectorProps> = ({
 
   // Handle font size selection
   const handleFontSizeChange = useCallback((value: string) => {
-    console.log('FontSizeSelector: Dispatching toolbar action with value:', value);
     
     // Dispatch a toolbar action event that the HtmlEditor will handle
     const toolbarAction = new CustomEvent('toolbar-action', {
