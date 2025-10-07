@@ -3,9 +3,10 @@ import OpenAI from 'openai';
 import dbConnect from '@/lib/db';
 import ChatHistory from '@/models/ChatHistory';
 import { getSession } from '@/app/config/withSession';
+import { OPENAI } from '@/app/config/config';
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: OPENAI.API_KEY,
 });
 
 // Function to detect if meaningful changes were made

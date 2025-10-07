@@ -10,3 +10,7 @@ export const MONGODB = {
         ? `${process.env.DB_PASSWORD}@`
         : '',   
 }
+
+export const OPENAI = {
+    API_KEY: process.env.OPENAI_API_KEY,
+}
