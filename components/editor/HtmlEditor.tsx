@@ -125,7 +125,6 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
         
         // Don't update if an interactive element is focused
         if (isInteractiveElementFocused) {
-          console.log('Interactive element is focused, skipping content update');
           return;
         }
         
@@ -138,20 +137,15 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
 
   // Function to apply formatting using modern DOM manipulation
   const applyFormatting = (format: string) => {
-    console.log('Applying formatting:', format);
-    
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) {
-      console.log('No selection found');
       return;
     }
 
     const range = selection.getRangeAt(0);
-    console.log('Range collapsed:', range.collapsed, 'Range text:', range.toString());
     
     // If range is collapsed (no selection), don't apply formatting
     if (range.collapsed) {
-      console.log('No text selected, skipping formatting');
       return;
     }
 
@@ -251,15 +245,11 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
 
   // Function to apply formatting using a saved range
   // const applyFormattingWithRange = (format: string, savedRange: Range | null) => {
-  //   console.log('Applying formatting with range:', format, savedRange);
-    
   //   if (!savedRange) {
-  //     console.log('No saved range available');
   //     return;
   //   }
     
   //   if (savedRange.collapsed) {
-  //     console.log('Saved range is collapsed, no text selected');
   //     return;
   //   }
     
@@ -268,11 +258,9 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
   //     const testRange = savedRange.cloneRange();
   //     const testText = testRange.toString();
   //     if (!testText || testText.trim() === '') {
-  //       console.log('Range contains no text');
   //       return;
   //     }
   //   } catch (error) {
-  //     console.log('Range is invalid:', error);
   //     return;
   //   }
     
@@ -314,7 +302,6 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
 
   //   // Check if the text is already formatted with this tag
   //   if (isTextFormatted(newRange, tagName)) {
-  //     console.log('Text is already formatted, removing formatting');
   //     // Remove the formatting
   //     if (removeFormatting(newRange, tagName)) {
   //       // Trigger input event to update content
@@ -501,17 +488,14 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
         if (editorRef.current && editorRef.current.contains(range.commonAncestorContainer)) {
           lastSelectionRef.current = range.cloneRange();
           lastSelectedTextRef.current = range.toString();
-          console.log('Stored selection:', range.toString(), 'Collapsed:', range.collapsed);
           
           // Check for font family changes and notify parent
           if (onFontFamilyChange) {
             if (!range.collapsed) {
               const currentFontFamily = getCurrentFontFamily();
-              console.log('Selection change - font family detected:', currentFontFamily);
               onFontFamilyChange(currentFontFamily);
             } else {
               // No text selected, reset font family
-              console.log('Selection change - no text selected, resetting font family');
               onFontFamilyChange(null);
             }
           }
@@ -571,8 +555,6 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
         }
       });
     });
-    
-    console.log('Synced all input values to HTML attributes');
   };
 
   // Listen for changes in input fields and save them
@@ -581,7 +563,6 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
     
     const handleInputChange = (e: Event) => {
       const target = e.target as HTMLInputElement | HTMLTextAreaElement;
-      console.log('Input field changed:', target.tagName, target.value);
       
       // Sync the value to the attribute immediately
       if (target.tagName === 'INPUT') {
@@ -611,7 +592,6 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
         if (editorRef.current) {
           const currentContent = editorRef.current.innerHTML;
           onChange(currentContent);
-          console.log('Saved content with input values');
         }
       }, 500); // Longer debounce for input fields
     };
@@ -1376,7 +1356,6 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
         const currentRange = currentSelection.getRangeAt(0);
         if (!currentRange.collapsed && editorRef.current && editorRef.current.contains(currentRange.commonAncestorContainer)) {
           workingRange = currentRange.cloneRange();
-          console.log('Using current selection range:', workingRange.toString());
         }
       }
       
@@ -1385,18 +1364,10 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
         workingRange = document.createRange();
         workingRange.setStart(pendingRange.startContainer, pendingRange.startOffset);
         workingRange.setEnd(pendingRange.endContainer, pendingRange.endOffset);
-        console.log('Using pending range:', workingRange.toString());
       }
-      
-      // Debug: Check the range content before extraction
-      console.log('Range content before extraction:', workingRange.toString());
-      console.log('Range start container:', workingRange.startContainer);
-      console.log('Range end container:', workingRange.endContainer);
-      console.log('Range collapsed:', workingRange.collapsed);
       
       // If range is collapsed or empty, try to find the text in the editor
       if (workingRange.collapsed || !workingRange.toString().trim()) {
-        console.log('Range is collapsed or empty, trying to find text in editor');
         const editorText = editorRef.current?.textContent || '';
         const selectedText = lastSelectedTextRef.current;
         
@@ -1405,14 +1376,12 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
           const foundRange = findAndSelectText(selectedText);
           if (foundRange) {
             workingRange = foundRange;
-            console.log('Found text with fallback:', workingRange.toString());
           }
         }
       }
       
       // If still no valid range, return
       if (workingRange.collapsed || !workingRange.toString().trim()) {
-        console.log('No valid range found for color application');
         return;
       }
       
@@ -1429,16 +1398,10 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
         span.style.backgroundColor = color;
       }
       
-      // Debug: Check span before adding content
-      console.log('Created span:', span.outerHTML);
-      
       // Try using surroundContents which is designed for wrapping selected content
       try {
         workingRange.surroundContents(span);
-        console.log('Successfully surrounded contents with span:', span.outerHTML);
       } catch (surroundError) {
-        console.log('surroundContents failed, trying alternative method:', surroundError);
-        
         // Alternative method: Use execCommand for color
         try {
           // First, ensure the range is selected
@@ -1454,21 +1417,13 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
           } else {
             document.execCommand('backColor', false, color);
           }
-          
-          console.log('Applied color using execCommand');
         } catch (execError) {
-          console.log('execCommand failed, falling back to extractContents:', execError);
-          
           // Final fallback to extractContents method
           const contents = workingRange.extractContents();
-          console.log('Extracted contents:', contents);
-          console.log('Extracted contents text:', contents.textContent);
           
           span.appendChild(contents);
-          console.log('Span after adding contents:', span.outerHTML);
           
           workingRange.insertNode(span);
-          console.log('Span inserted into range');
         }
       }
       
@@ -1481,17 +1436,6 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
       if (editorRef.current) {
         const newContent = editorRef.current.innerHTML;
         onChange(newContent);
-        console.log('Color applied successfully:', colorPickerType, color);
-        
-        // Debug: Check the actual DOM structure
-        console.log('Updated content HTML:', newContent);
-        
-        // Debug: Check if the span with color was actually created
-        const spans = editorRef.current.querySelectorAll('span[style*="color"], span[style*="background-color"]');
-        console.log('Found colored spans:', spans.length);
-        spans.forEach((span, index) => {
-          console.log(`Span ${index}:`, span.outerHTML);
-        });
       }
       
     } catch (error) {
@@ -1665,13 +1609,11 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
     while (element && element !== editorRef.current) {
       if (element.style.fontFamily) {
         const fontFamily = element.style.fontFamily;
-        console.log('Found font family:', fontFamily);
         return fontFamily;
       }
       element = element.parentElement;
     }
     
-    console.log('No font family found for selected text');
     return null;
   };
 
@@ -1701,7 +1643,6 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
       
       // Notify parent of font family change
       if (onFontFamilyChange) {
-        console.log('Applying font family:', value);
         onFontFamilyChange(value);
       }
     }
@@ -1780,11 +1721,9 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
   //       try {
   //         const testText = range.toString();
   //         if (testText === text) {
-  //           console.log('Found and validated text:', testText);
   //           return range;
   //         }
   //       } catch (error) {
-  //         console.log('Error validating range:', error);
   //         continue;
   //       }
   //     }
@@ -1845,7 +1784,6 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
       selection?.removeAllRanges();
       selection?.addRange(range);
   
-      console.log('Found and selected text:', range.toString());
       return range;
     }
   
@@ -1857,7 +1795,6 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
   // Listen for toolbar actions
   useEffect(() => {
     const handleToolbarAction = (event: CustomEvent) => {
-      console.log('Toolbar action received:', event.detail);
       if (!editorRef.current) return;
       
       const { action, value } = event.detail;
@@ -1876,33 +1813,25 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
           const currentRange = currentSelection.getRangeAt(0);
           if (!currentRange.collapsed && editorRef.current && editorRef.current.contains(currentRange.commonAncestorContainer)) {
             savedRange = currentRange.cloneRange();
-            console.log('Using current selection:', savedRange.toString());
           }
         }
         
         // If no current selection, try the stored selection
         if (!savedRange) {
           savedRange = lastSelectionRef.current;
-          console.log('Using stored range:', savedRange ? savedRange.toString() : 'none', 'Collapsed:', savedRange ? savedRange.collapsed : 'N/A');
         }
         
         // If still no valid range, try to find the last selected text
         if (!savedRange || savedRange.collapsed) {
-          console.log('Trying fallback - finding text:', lastSelectedTextRef.current);
           savedRange = findAndSelectText(lastSelectedTextRef.current);
-          if (savedRange) {
-            console.log('Found text with fallback:', savedRange.toString());
-          }
         }
         
         // If we still don't have a range, try to get any selection within the editor
         if (!savedRange || savedRange.collapsed) {
-          console.log('No valid range found, checking for any selection in editor');
           if (currentSelection && currentSelection.rangeCount > 0) {
             const currentRange = currentSelection.getRangeAt(0);
             if (editorRef.current && editorRef.current.contains(currentRange.commonAncestorContainer)) {
               savedRange = currentRange.cloneRange();
-              console.log('Using any selection in editor:', savedRange.toString());
             }
           }
         }
@@ -1997,7 +1926,6 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
     // If input is from an interactive element, don't update the whole content
     // This prevents input values from being lost
     if (isInteractive) {
-      console.log('Input from interactive element, skipping content update');
       return;
     }
     
@@ -2023,7 +1951,6 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
       if (!range.collapsed && editorRef.current && editorRef.current.contains(range.commonAncestorContainer)) {
         lastSelectionRef.current = range.cloneRange();
         lastSelectedTextRef.current = range.toString();
-        console.log('Selection captured on focus:', range.toString());
       }
     }
   };
@@ -2039,7 +1966,6 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
       
       // If moving to an interactive element within the editor, keep editing state
       if (isInteractive) {
-        console.log('Moving to interactive element, keeping editing state');
         return;
       }
     }
@@ -2189,7 +2115,6 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
           
           // If clicking on interactive element, don't interfere with it
           if (isInteractive) {
-            console.log('Clicked on interactive element:', target.tagName);
             return;
           }
           
@@ -2205,7 +2130,6 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
             if (!range.collapsed && editorRef.current && editorRef.current.contains(range.commonAncestorContainer)) {
               lastSelectionRef.current = range.cloneRange();
               lastSelectedTextRef.current = range.toString();
-              console.log('Selection captured on click:', range.toString());
             }
           }
         }}
@@ -2230,7 +2154,6 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
             if (!range.collapsed && editorRef.current && editorRef.current.contains(range.commonAncestorContainer)) {
               lastSelectionRef.current = range.cloneRange();
               lastSelectedTextRef.current = range.toString();
-              console.log('Selection captured on mouseup:', range.toString());
             }
           }
         }}
@@ -2255,7 +2178,6 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
             if (!range.collapsed && editorRef.current && editorRef.current.contains(range.commonAncestorContainer)) {
               lastSelectionRef.current = range.cloneRange();
               lastSelectedTextRef.current = range.toString();
-              console.log('Selection captured on mousedown:', range.toString());
             }
           }
         }}
@@ -2330,10 +2252,6 @@ export default function HtmlEditor({ content, onChange, editorRef, onFontFamilyC
     }
     
     isUpdatingFromHtmlCode.current = true;
-    console.log('HtmlEditor - handleHtmlCodeChange called:', {
-      contentLength: newHtml?.length || 0,
-      preview: newHtml?.substring(0, 100) + '...'
-    });
     
     if (newHtml !== htmlContent) {
       setHtmlContent(newHtml);
@@ -2346,7 +2264,6 @@ export default function HtmlEditor({ content, onChange, editorRef, onFontFamilyC
   };
   
   const handleTabChange = (newTab: string) => {
-    console.log('HtmlEditor - Tab switching to:', newTab);
     setActiveTab(newTab);
     
     // Force content synchronization when switching tabs
@@ -2358,7 +2275,6 @@ export default function HtmlEditor({ content, onChange, editorRef, onFontFamilyC
   const extractBodyContent = (html: string) => {
     
     if (!html || html.trim() === '') {
-      console.log('HtmlEditor - Empty HTML content');
       return '<p>No content available</p>';
     }
     
