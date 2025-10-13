@@ -15,31 +15,49 @@ export async function exportToPDF(title: string, contentHtml: string): Promise<v
     }
   } catch (error) {
     console.error('PDF export error:', error);
-    // Fallback to basic PDF export
-    const pdf = new jsPDF();
+    // Fallback to basic PDF export with margins and compression
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4',
+      compress: true,
+      precision: 2
+    });
+    
+    const margin = 15; // 15mm margin on all sides
+    const contentWidth = 210 - (margin * 2); // 180mm content width
+    
     pdf.setFontSize(20);
-    pdf.text(title, 20, 20);
+    pdf.text(title, margin, margin + 10);
     
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = contentHtml;
     const textContent = tempDiv.textContent || tempDiv.innerText || '';
     
     pdf.setFontSize(12);
-    const splitText = pdf.splitTextToSize(textContent, 170);
-    pdf.text(splitText, 20, 40);
+    const splitText = pdf.splitTextToSize(textContent, contentWidth);
+    pdf.text(splitText, margin, margin + 30);
     
     pdf.save(`${title}.pdf`);
   }
 }
 
 async function exportHtmlToPDF(title: string, contentHtml: string): Promise<void> {
+  // Extract width from HTML content - look for max-width in body style
+  const widthMatch = contentHtml.match(/max-width:\s*(\d+)px/);
+  const templateWidth = widthMatch ? parseInt(widthMatch[1]) : 880; // Default to 880px to match Weekly Progress template
+  
   // Create a temporary container with the exact HTML content
   const tempContainer = document.createElement('div');
-  tempContainer.style.position = 'absolute';
+  tempContainer.style.position = 'fixed';
   tempContainer.style.left = '-9999px';
   tempContainer.style.top = '0';
-  tempContainer.style.width = '900px'; // Match the template width
-  tempContainer.style.backgroundColor = 'white';
+  tempContainer.style.width = `${templateWidth}px`;
+  tempContainer.style.minHeight = '100vh';
+  tempContainer.style.backgroundColor = '#ffffff';
+  tempContainer.style.padding = '0';
+  tempContainer.style.margin = '0';
+  tempContainer.style.overflow = 'visible';
   
   // Extract the body content from HTML if it exists
   let htmlContent = contentHtml;
@@ -50,163 +68,235 @@ async function exportHtmlToPDF(title: string, contentHtml: string): Promise<void
     }
   }
   
-  // Create the complete HTML document with preserved styles, page break handling, and CSS
-  tempContainer.innerHTML = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="UTF-8">
-      <style>
-        body { 
-          margin: 0; 
-          font-family: 'Segoe UI', sans-serif; 
-        }
-        * { 
-          box-sizing: border-box; 
-        }
-        
-        /* Include the HTML preview styles from globals.css */
-        .html-preview {
-          width: 100%;
-        }
-        
-        .html-preview h1,
-        .html-preview h2,
-        .html-preview h3,
-        .html-preview h4,
-        .html-preview h5,
-        .html-preview h6 {
-          font-weight: 600;
-        }
-        
-        .html-preview h1 {
-          font-size: 1.875rem;
-          line-height: 2.25rem;
-        }
-        
-        .html-preview h2 {
-          font-size: 1.5rem;
-          line-height: 2rem;
-        }
-        
-        /* Page break handling */
-        h1, h2, h3, h4, h5, h6 {
-          page-break-after: avoid;
-          page-break-inside: avoid;
-          margin-top: 20px;
-          margin-bottom: 15px;
-        }
-        
-        p {
-          page-break-inside: avoid;
-          margin-bottom: 12px;
-        }
-        
-        ul, ol {
-          page-break-inside: avoid;
-          margin-bottom: 15px;
-        }
-        
-        li {
-          page-break-inside: avoid;
-          margin-bottom: 6px;
-        }
-        
-        table {
-          page-break-inside: avoid;
-          margin: 20px 0;
-        }
-        
-        tr {
-          page-break-inside: avoid;
-        }
-        
-        /* Add spacing before page breaks */
-        .page-break-before {
-          page-break-before: always;
-          margin-top: 30px;
-          padding-top: 20px;
-        }
-        
-        /* Ensure proper spacing around content */
-        div {
-          margin-bottom: 15px;
-        }
-        
-        /* Add bottom margin to prevent content from touching page edges */
-        .content-section {
-          margin-bottom: 25px;
-          padding-bottom: 10px;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="html-preview">
-        ${htmlContent}
-      </div>
-    </body>
-    </html>
-  `;
+  // Set the HTML content directly
+  tempContainer.innerHTML = htmlContent;
   
   // Add to DOM temporarily
   document.body.appendChild(tempContainer);
   
-  // Convert to canvas with high quality
+  // Force layout recalculation
+  tempContainer.offsetHeight;
+  
+  // Wait for images and background images to load
+  await new Promise(resolve => setTimeout(resolve, 800));
+  
+  // Ensure all images are loaded
+  const images = tempContainer.querySelectorAll('img');
+  await Promise.all(
+    Array.from(images).map(img => {
+      if (img.complete) return Promise.resolve();
+      return new Promise(resolve => {
+        img.onload = () => resolve(true);
+        img.onerror = () => resolve(true);
+      });
+    })
+  );
+  
+  // Wait for background images and fonts
+  await new Promise(resolve => setTimeout(resolve, 300));
+  
+  // Get the actual rendered dimensions
+  const actualWidth = templateWidth;
+  const actualHeight = tempContainer.scrollHeight;
+  
+  console.log('PDF Export - Container dimensions:', { actualWidth, actualHeight });
+  
+  // Convert to canvas with optimized settings
   const canvas = await html2canvas(tempContainer, {
-    scale: 2, // Higher resolution
+    scale: 2, // Good balance between quality and file size
     useCORS: true,
     allowTaint: true,
     backgroundColor: '#ffffff',
-    width: 900,
-    height: tempContainer.scrollHeight,
+    width: actualWidth,
+    height: actualHeight,
     scrollX: 0,
     scrollY: 0,
-    logging: false
+    logging: false,
+    imageTimeout: 15000,
+    windowWidth: actualWidth,
+    windowHeight: actualHeight,
+    onclone: (clonedDoc) => {
+      // Ensure all inline styles are preserved in the cloned document
+      const clonedContainer = clonedDoc.body.querySelector('div');
+      if (clonedContainer) {
+        const element = clonedContainer as HTMLElement;
+        element.style.width = `${actualWidth}px`;
+        element.style.backgroundColor = '#ffffff';
+        element.style.position = 'relative';
+        element.style.left = '0';
+        element.style.top = '0';
+        
+        // Fix checkbox vertical alignment
+        const checkboxes = clonedContainer.querySelectorAll('input[type="checkbox"]');
+        checkboxes.forEach((checkbox) => {
+          const cb = checkbox as HTMLInputElement;
+          cb.style.verticalAlign = 'baseline';
+          cb.style.margin = '0 8px 0 0';
+          cb.style.position = 'relative';
+          cb.style.top = '2px';
+          cb.style.width = '16px';
+          cb.style.height = '16px';
+          cb.style.flexShrink = '0';
+        });
+        
+        // Fix label alignment with checkboxes
+        const labels = clonedContainer.querySelectorAll('label');
+        labels.forEach((label) => {
+          const labelEl = label as HTMLElement;
+          labelEl.style.display = 'flex';
+          labelEl.style.alignItems = 'flex-start';
+          labelEl.style.lineHeight = '1.5';
+          labelEl.style.margin = '5px 0';
+          // Ensure the span inside label aligns properly
+          const spans = labelEl.querySelectorAll('span');
+          spans.forEach(span => {
+            (span as HTMLElement).style.lineHeight = '1.5';
+            (span as HTMLElement).style.paddingTop = '1px';
+          });
+        });
+        
+        // Ensure text inputs display their values correctly and preserve styling
+        const inputs = clonedContainer.querySelectorAll('input[type="text"]');
+        inputs.forEach((input) => {
+          const inputEl = input as HTMLInputElement;
+          // Ensure the value is visible in the PDF
+          if (inputEl.value) {
+            inputEl.setAttribute('value', inputEl.value);
+          }
+          // Remove unwanted borders, keep only bottom border
+          inputEl.style.border = 'none';
+          inputEl.style.borderBottom = '1px solid #333';
+          inputEl.style.outline = 'none';
+          inputEl.style.background = 'transparent';
+          inputEl.style.padding = '5px 0';
+          inputEl.style.height = 'auto';
+          inputEl.style.minHeight = '24px';
+          inputEl.style.lineHeight = '1.5';
+          inputEl.style.fontSize = '14px';
+          inputEl.style.color = '#333';
+          inputEl.style.display = 'block';
+          inputEl.style.width = '100%';
+          inputEl.style.boxSizing = 'border-box';
+          inputEl.style.webkitAppearance = 'none';
+          inputEl.style.appearance = 'none';
+        });
+        
+        // Fix table cell alignment and prevent text cutoff
+        const tableCells = clonedContainer.querySelectorAll('td');
+        tableCells.forEach((cell) => {
+          const cellEl = cell as HTMLElement;
+          cellEl.style.verticalAlign = 'top';
+          cellEl.style.wordWrap = 'break-word';
+          cellEl.style.overflowWrap = 'break-word';
+          cellEl.style.whiteSpace = 'normal';
+        });
+        
+        // Fix table header alignment
+        const tableHeaders = clonedContainer.querySelectorAll('th');
+        tableHeaders.forEach((th) => {
+          const thEl = th as HTMLElement;
+          thEl.style.verticalAlign = 'middle';
+        });
+        
+        // Prevent text overflow in all elements
+        const allElements = clonedContainer.querySelectorAll('*');
+        allElements.forEach((el) => {
+          const htmlEl = el as HTMLElement;
+          htmlEl.style.wordWrap = 'break-word';
+          htmlEl.style.overflowWrap = 'break-word';
+        });
+        
+        // Fix flex containers with checkboxes
+        const flexContainers = clonedContainer.querySelectorAll('[style*="display"]');
+        flexContainers.forEach((flexEl) => {
+          const el = flexEl as HTMLElement;
+          if (el.style.display === 'flex' && el.querySelector('input[type="checkbox"]')) {
+            el.style.alignItems = 'center';
+            el.style.gap = '8px';
+          }
+        });
+      }
+    }
   });
+  
+  console.log('PDF Export - Canvas dimensions:', { width: canvas.width, height: canvas.height });
   
   // Remove temporary container
   document.body.removeChild(tempContainer);
   
-  // Calculate PDF dimensions with proper spacing
-  const imgWidth = 210; // A4 width in mm
-  const pageHeight = 295; // A4 height in mm
-  const imgHeight = (canvas.height * imgWidth) / canvas.width;
-  let heightLeft = imgHeight;
+  // PDF dimensions with margins
+  const pageWidth = 210; // A4 width in mm
+  const pageHeight = 297; // A4 height in mm
+  const margin = 10; // 10mm margin on all sides
+  const contentWidth = pageWidth - (margin * 2); // 190mm content width
+  const contentHeight = pageHeight - (margin * 2); // 277mm content height
   
-  // Create PDF
-  const pdf = new jsPDF('p', 'mm', 'a4');
+  // Calculate image dimensions to fit within margins while maintaining aspect ratio
+  const imgWidth = contentWidth;
+  const imgHeight = (canvas.height * contentWidth) / canvas.width;
+  
+  console.log('PDF Export - Image dimensions in PDF:', { imgWidth, imgHeight });
+  
+  // Create PDF with better quality settings
+  const pdf = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+    compress: true,
+    precision: 2
+  });
+  
+  let heightLeft = imgHeight;
   let position = 0;
   
-  // Add first page
-  pdf.addImage(canvas, 'PNG', 0, position, imgWidth, imgHeight);
-  heightLeft -= pageHeight;
+  // Add first page with margins
+  const firstPageHeight = Math.min(imgHeight, contentHeight);
+  pdf.addImage(
+    canvas.toDataURL('image/png'),
+    'PNG',
+    margin,
+    margin,
+    imgWidth,
+    imgHeight,
+    undefined,
+    'FAST'
+  );
+  
+  heightLeft -= contentHeight;
   
   // Add additional pages if content is longer than one page
-  while (heightLeft >= 0) {
+  while (heightLeft > 0) {
     position = heightLeft - imgHeight;
     pdf.addPage();
     
-    // Add a small margin at the top of new pages for better spacing
-    if (heightLeft > pageHeight) {
-      // Add some white space at the top of new pages
-      pdf.setFillColor(255, 255, 255);
-      pdf.rect(0, 0, imgWidth, 10, 'F');
-    }
+    pdf.addImage(
+      canvas.toDataURL('image/png'),
+      'PNG',
+      margin,
+      margin + position,
+      imgWidth,
+      imgHeight,
+      undefined,
+      'FAST'
+    );
     
-    pdf.addImage(canvas, 'PNG', 0, position, imgWidth, imgHeight);
-    heightLeft -= pageHeight;
+    heightLeft -= contentHeight;
   }
   
   pdf.save(`${title}.pdf`);
 }
 
 async function exportMarkdownToPDF(title: string, contentHtml: string): Promise<void> {
+  // Extract width from HTML content if it exists
+  const widthMatch = contentHtml.match(/max-width:\s*(\d+)px|width:\s*(\d+)px/);
+  const templateWidth = widthMatch ? parseInt(widthMatch[1] || widthMatch[2]) : 800; // Default to 800px if not found
+  
   // Create a temporary container with proper styling
   const tempContainer = document.createElement('div');
   tempContainer.style.position = 'absolute';
   tempContainer.style.left = '-9999px';
   tempContainer.style.top = '0';
-  tempContainer.style.width = '800px'; // Fixed width for consistent layout
+  tempContainer.style.width = `${templateWidth}px`; // Use dynamic width from template
   tempContainer.style.padding = '40px';
   tempContainer.style.backgroundColor = 'white';
   tempContainer.style.fontFamily = 'Arial, sans-serif';
@@ -321,20 +411,20 @@ async function exportMarkdownToPDF(title: string, contentHtml: string): Promise<
       ${contentHtml}
     </div>
     <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; text-align: center; color: #999; font-size: 12px;">
-      Generated by AI Docs - ${new Date().toLocaleDateString()}
+      Generated by Docs - ${new Date().toLocaleDateString()}
     </div>
   `;
   
   // Add to DOM temporarily
   document.body.appendChild(tempContainer);
   
-  // Convert to canvas with high quality
+  // Convert to canvas with optimized settings for compression
   const canvas = await html2canvas(tempContainer, {
-    scale: 2, // Higher resolution
+    scale: 1.5, // Reduced scale for smaller file size while maintaining quality
     useCORS: true,
     allowTaint: true,
     backgroundColor: '#ffffff',
-    width: 800,
+    width: templateWidth, // Use dynamic width from template
     height: tempContainer.scrollHeight,
     scrollX: 0,
     scrollY: 0
@@ -343,34 +433,41 @@ async function exportMarkdownToPDF(title: string, contentHtml: string): Promise<
   // Remove temporary container
   document.body.removeChild(tempContainer);
   
-  // Calculate PDF dimensions with proper spacing
-  const imgWidth = 210; // A4 width in mm
-  const pageHeight = 295; // A4 height in mm
-  const imgHeight = (canvas.height * imgWidth) / canvas.width;
+  // PDF dimensions with margins
+  const pageWidth = 210; // A4 width in mm
+  const pageHeight = 297; // A4 height in mm
+  const margin = 15; // 15mm margin on all sides
+  const contentWidth = pageWidth - (margin * 2); // 180mm content width
+  const contentHeight = pageHeight - (margin * 2); // 267mm content height
+  
+  // Calculate image dimensions to fit within margins
+  const imgWidth = contentWidth;
+  const imgHeight = (canvas.height * contentWidth) / canvas.width;
   let heightLeft = imgHeight;
   
-  // Create PDF
-  const pdf = new jsPDF('p', 'mm', 'a4');
+  // Create PDF with compression
+  const pdf = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+    compress: true, // Enable compression
+    precision: 2 // Reduce precision for smaller file size
+  });
+  
   let position = 0;
   
-  // Add first page
-  pdf.addImage(canvas, 'PNG', 0, position, imgWidth, imgHeight);
-  heightLeft -= pageHeight;
+  // Add first page with margins
+  pdf.addImage(canvas, 'JPEG', margin, margin + position, imgWidth, imgHeight, undefined, 'FAST');
+  heightLeft -= contentHeight;
   
   // Add additional pages if content is longer than one page
   while (heightLeft >= 0) {
     position = heightLeft - imgHeight;
     pdf.addPage();
     
-    // Add a small margin at the top of new pages for better spacing
-    if (heightLeft > pageHeight) {
-      // Add some white space at the top of new pages
-      pdf.setFillColor(255, 255, 255);
-      pdf.rect(0, 0, imgWidth, 10, 'F');
-    }
-    
-    pdf.addImage(canvas, 'PNG', 0, position, imgWidth, imgHeight);
-    heightLeft -= pageHeight;
+    // Add content with proper margins
+    pdf.addImage(canvas, 'JPEG', margin, margin + position, imgWidth, imgHeight, undefined, 'FAST');
+    heightLeft -= contentHeight;
   }
   
   pdf.save(`${title}.pdf`);
@@ -395,6 +492,10 @@ export async function exportToWord(title: string, contentHtml: string): Promise<
 }
 
 function exportHtmlToWord(title: string, contentHtml: string): void {
+  // Extract width from HTML content
+  const widthMatch = contentHtml.match(/max-width:\s*(\d+)px|width:\s*(\d+)px/);
+  const templateWidth = widthMatch ? parseInt(widthMatch[1] || widthMatch[2]) : 800; // Default to 800px if not found
+  
   // Extract the body content from HTML if it exists
   let htmlContent = contentHtml;
   if (contentHtml.includes('<body')) {
@@ -466,7 +567,7 @@ function exportHtmlToWord(title: string, contentHtml: string): void {
         ${htmlContent}
       </div>
       <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; text-align: center; color: #999; font-size: 14px;">
-        <p>Generated by AI Docs</p>
+        <p>Generated by Docs</p>
         <p>${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}</p>
       </div>
     </body>
@@ -680,7 +781,7 @@ function exportMarkdownToWord(title: string, contentHtml: string): void {
         ${contentHtml}
       </div>
       <div class="footer">
-        <p>Generated by AI Docs</p>
+        <p>Generated by Docs</p>
         <p>${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}</p>
       </div>
     </body>
@@ -713,6 +814,10 @@ export function exportToHTML(title: string, contentHtml: string): void {
 }
 
 function exportHtmlToHTML(title: string, contentHtml: string): void {
+  // Extract width from HTML content
+  const widthMatch = contentHtml.match(/max-width:\s*(\d+)px|width:\s*(\d+)px/);
+  const templateWidth = widthMatch ? parseInt(widthMatch[1] || widthMatch[2]) : 800; // Default to 800px if not found
+  
   // Extract the body content from HTML if it exists
   let htmlContent = contentHtml;
   if (contentHtml.includes('<body')) {
@@ -740,9 +845,10 @@ function exportHtmlToHTML(title: string, contentHtml: string): void {
           background-color: #ffffff;
         }
         
-        /* Include the HTML preview styles from globals.css */
         .html-preview {
-          width: 100%;
+          max-width: ${templateWidth}px;
+          margin: 0 auto;
+          padding: 0 20px;
         }
         
         .html-preview h1,
@@ -785,7 +891,7 @@ function exportHtmlToHTML(title: string, contentHtml: string): void {
         ${htmlContent}
       </div>
       <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; text-align: center; color: #999; font-size: 14px;">
-        <p>Generated by AI Docs</p>
+        <p>Generated by Docs</p>
         <p>${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}</p>
       </div>
     </body>
@@ -1049,7 +1155,7 @@ function exportMarkdownToHTML(title: string, contentHtml: string): void {
       </div>
       
       <div class="document-footer">
-        <p>Generated by AI Docs</p>
+        <p>Generated by Docs</p>
         <p>${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}</p>
       </div>
     </body>

@@ -181,7 +181,7 @@ const MarkdownEditor = ({ content, onChange }: MarkdownEditorProps) => {
                   </li>
                 ),
                 blockquote: ({ children }) => (
-                  <blockquote className="border-l-4 border-primary pl-4 italic text-gray-600 dark:text-gray-400 my-4">
+                  <blockquote className="border-l-4 border-black pl-4 italic text-gray-600 dark:text-gray-400 my-4">
                     {children}
                   </blockquote>
                 ),

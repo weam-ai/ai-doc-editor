@@ -15,7 +15,7 @@ export const q3BusinessPerformanceTemplate = {
 </head>
 <body style="margin: 0; font-family: 'Helvetica Neue', sans-serif; background: #f4f4f4; color: #333;">
 
-  <div style="max-width: 900px; margin: 40px auto; background: white; padding: 50px 60px; box-shadow: 0 0 12px rgba(0,0,0,0.08);">
+  <div style="max-width: 900px; margin: 30px auto; background: white; padding: 50px 60px; ">
 
     <!-- Title Page -->
     <div style="text-align: center; margin-bottom: 60px;">

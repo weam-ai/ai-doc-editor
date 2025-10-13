@@ -48,7 +48,7 @@ export const q2BusinessReportTemplate = {
     </table>
 
     <h2 style="color: #003366; margin: 15px 0;">2. Customer Metrics</h2>
-    <ul style="line-height: 1.8;">
+    <ul style="list-style-type: disc; margin: 10px 0px; padding-left: 20px;">
       <li>Customer Retention: 92%</li>
       <li>New Customer Growth: +15%</li>
       <li>NPS Score: 64 (↑ from 58)</li>
@@ -79,18 +79,18 @@ export const q2BusinessReportTemplate = {
     </table>
 
     <h2 style="color: #003366; margin: 15px 0;">4. Notable Wins</h2>
-    <ul>
+    <ul style="list-style-type: disc; margin: 10px 0px; padding-left: 20px;">
       <li>Closed 3 enterprise deals in healthcare sector</li>
       <li>Reduced churn to under 4%</li>
       <li>APAC team opened new regional office in Singapore</li>
     </ul>
 
     <h2 style="color: #003366; margin: 15px 0;">5. Priorities for Q3</h2>
-    <ol>
+    <ul style="list-style-type: disc; margin: 10px 0px; padding-left: 20px;">
       <li>Expand AI product beta rollout</li>
       <li>Launch marketing campaign for SMB tier</li>
       <li>Hire 8 engineers and 2 PMs in R&D</li>
-    </ol>
+    </ul>
 
     <hr style="margin-top: 50px; border: none; border-top: 2px solid #ddd;">
     <p style="text-align: center; color: #888;">Prepared by: Strategy & Performance Team</p>

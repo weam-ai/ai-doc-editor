@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  ai-doc-editor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ai-doc-editor-img
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
+    restart: unless-stopped
+    container_name: ai-doc-editor-container
+    networks:
+      - weam_app-network
+networks:
+  weam_app-network:
+    external: true
