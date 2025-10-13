@@ -11,5 +11,6 @@ export default async function CookieDisplayPage() {
         return <div>Welcome, {session.user.email}!</div>;
     }
     
+    
     return <div>Please log in</div>;
 }
