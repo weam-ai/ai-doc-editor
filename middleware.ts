@@ -48,13 +48,11 @@ export async function middleware(request: NextRequest) {
         
         // If access is denied, redirect to login page
         if (!hasAccess) {          
-          console.log('Access denied, redirecting to login page');
           return NextResponse.redirect(new URL('/login', request.url));
         } else {
           return NextResponse.next();
         }
       } else {
-        console.log('No user session found, redirecting to login page');
         return NextResponse.redirect(new URL('/login', request.url));
       }
     } catch (error) {

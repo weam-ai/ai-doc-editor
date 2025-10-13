@@ -163,11 +163,6 @@ export async function POST(request: NextRequest) {
   try {
     const { prompt, template, isModification = false, currentContent, documentId } = await request.json();
 
-    console.log('Generate API - Prompt:', prompt);
-    console.log('Generate API - isModification:', isModification);
-    console.log('Generate API - currentContent length:', currentContent?.length);
-    console.log('Generate API - currentContent preview:', currentContent?.substring(0, 300));
-
     if (!prompt) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
     }
@@ -309,7 +304,6 @@ Remember: You're not just generating content, you're being a helpful assistant w
     });
 
     const generatedContent = completion.choices[0]?.message?.content || '';
-    console.log('AI Generated Content:', generatedContent.substring(0, 500));
     
     let htmlContent;
     if (isModification && currentContent) {
@@ -343,8 +337,6 @@ Remember: You're not just generating content, you're being a helpful assistant w
 
         // Additional validation for role changes
         if (prompt.toLowerCase().includes('change') && (prompt.toLowerCase().includes('to') || prompt.toLowerCase().includes('into'))) {
-          console.log('Detected potential role change request:', prompt);
-          
           // Check if it's a job title change by looking for common patterns
           const roleChangePatterns = [
             /change\s+(\w+\s*\w*)\s+to\s+(\w+\s*\w*)/i,
@@ -358,15 +350,6 @@ Remember: You're not just generating content, you're being a helpful assistant w
             if (match) {
               const fromRole = match[1].trim();
               const toRole = match[2].trim();
-              console.log(`Role change detected: ${fromRole} → ${toRole}`);
-              
-              // Log the role change for monitoring purposes
-              console.log(`Role change from "${fromRole}" to "${toRole}" - AI should update relevant content`);
-              
-              // Basic validation: ensure the new role title appears in the content
-              if (!htmlContent.toLowerCase().includes(toRole.toLowerCase())) {
-                console.warn(`AI may not have updated the role title to "${toRole}"`);
-              }
               break;
             }
           }
@@ -457,8 +440,6 @@ Remember: You're not just generating content, you're being a helpful assistant w
           });
           await chatHistory.save();
         }
-      } else {
-        console.log('Generate API - Skipping chat history save for template preview:', documentId);
       }
     } catch (chatError) {
       console.error('Error saving chat history:', chatError);

@@ -99,8 +99,6 @@ async function exportHtmlToPDF(title: string, contentHtml: string): Promise<void
   const actualWidth = templateWidth;
   const actualHeight = tempContainer.scrollHeight;
   
-  console.log('PDF Export - Container dimensions:', { actualWidth, actualHeight });
-  
   // Convert to canvas with optimized settings
   const canvas = await html2canvas(tempContainer, {
     scale: 2, // Good balance between quality and file size
@@ -219,8 +217,6 @@ async function exportHtmlToPDF(title: string, contentHtml: string): Promise<void
     }
   });
   
-  console.log('PDF Export - Canvas dimensions:', { width: canvas.width, height: canvas.height });
-  
   // Remove temporary container
   document.body.removeChild(tempContainer);
   
@@ -234,8 +230,6 @@ async function exportHtmlToPDF(title: string, contentHtml: string): Promise<void
   // Calculate image dimensions to fit within margins while maintaining aspect ratio
   const imgWidth = contentWidth;
   const imgHeight = (canvas.height * contentWidth) / canvas.width;
-  
-  console.log('PDF Export - Image dimensions in PDF:', { imgWidth, imgHeight });
   
   // Create PDF with better quality settings
   const pdf = new jsPDF({
