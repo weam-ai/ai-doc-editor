@@ -7,7 +7,7 @@ import { SessionValidator } from '@/components/providers/SessionValidator';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Docs - AI-Powered Document Editor',
+  title: 'Ai Docs - AI-Powered Document Editor',
   description: 'Create, edit, and manage documents with AI assistance',
 };
 

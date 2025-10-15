@@ -1,6 +1,6 @@
 # Templates Directory
 
-This directory contains all the template files for the Docs application. Each template is defined as a separate TypeScript file for better organization and maintainability.
+This directory contains all the template files for the Ai Docs application. Each template is defined as a separate TypeScript file for better organization and maintainability.
 
 ## Structure
 
