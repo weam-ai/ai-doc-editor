@@ -1,6 +1,6 @@
-# Docs - AI-Powered Document Editor
+# Ai Docs - AI-Powered Document Editor
 
-A modern, AI-powered document editor similar to Genspark Docs, built with Next.js 14, MongoDB, and OpenAI integration.
+A modern, AI-powered document editor similar to Genspark Ai Docs, built with Next.js 14, MongoDB, and OpenAI integration.
 
 ## ✨ Features
 
@@ -60,7 +60,7 @@ A modern, AI-powered document editor similar to Genspark Docs, built with Next.j
 ### 1. Clone the Repository
 ```bash
 git clone <repository-url>
-cd aidocs
+cd ai-docs
 ```
 
 ### 2. Install Dependencies
@@ -73,7 +73,7 @@ Create a `.env.local` file in the root directory:
 
 ```env
 # Database
-MONGODB_URI=mongodb://localhost:27017/aidocs
+MONGODB_URI=mongodb://localhost:27017/ai-docs
 
 # Iron Session
 NEXT_PUBLIC_COOKIE_NAME=your-cookie
@@ -106,12 +106,12 @@ OPENAI_API_KEY=your-openai-api-key
 npm run dev
 ```
 
-Visit `http://localhost:3000` to see your Docs application!
+Visit `http://localhost:3000` to see your Ai Docs application!
 
 ## 📁 Project Structure
 
 ```
-aidocs/
+ai-docs/
 ├── app/                    # Next.js App Router
 │   ├── api/               # API routes
 │   │   ├── documents/     # Document CRUD operations
