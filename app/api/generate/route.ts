@@ -3,11 +3,13 @@ import OpenAI from 'openai';
 import dbConnect from '@/lib/db';
 import ChatHistory from '@/models/ChatHistory';
 import { getSession } from '@/app/config/withSession';
-import { OPENAI } from '@/app/config/config';
+import { OPENAI, GEMINI } from '@/app/config/config';
+import { createGeminiChatCompletion } from '@/lib/gemini';
 
-const openai = new OpenAI({
+// Initialize OpenAI client only when API key is available
+const openai = OPENAI.API_KEY ? new OpenAI({
   apiKey: OPENAI.API_KEY,
-});
+}) : null;
 
 // Function to detect if meaningful changes were made
 function hasMeaningfulChanges(oldContent: string, newContent: string): boolean {
@@ -169,6 +171,19 @@ export async function POST(request: NextRequest) {
 
     let systemPrompt = '';
     
+    // Detect if this is a template creation request
+    const isTemplateRequest = prompt.toLowerCase().includes('template') && 
+                             (prompt.toLowerCase().includes('create') || 
+                              prompt.toLowerCase().includes('make') || 
+                              prompt.toLowerCase().includes('generate'));
+    
+    console.log('Template Detection:', {
+      prompt: prompt,
+      isTemplateRequest: isTemplateRequest,
+      isModification: isModification,
+      hasCurrentContent: !!currentContent
+    });
+    
     if (isModification && currentContent) {
       // For modification requests, instruct AI to modify existing HTML
       systemPrompt = `You are an expert HTML document modifier. Your task is to modify an existing HTML document based on ANY user request.
@@ -243,8 +258,69 @@ export async function POST(request: NextRequest) {
     - Be thorough in your transformation - don't just change the title, update everything that should change
 
     DO NOT create a new document. MODIFY the existing one. Return the SAME document structure with filled form fields.`;
-} else {
-      // For new document creation requests - return direct HTML
+    } else if (isTemplateRequest) {
+      // For template creation requests - create visual templates
+      systemPrompt = `You are a creative AI assistant that creates colorful, visual HTML templates. 
+
+CRITICAL: You must create a VISUAL, COLORFUL HTML TEMPLATE - NOT text descriptions or instructions!
+
+TEMPLATE REQUIREMENTS:
+1. **VISUAL HTML TEMPLATE**: Create an actual HTML page with embedded CSS styling
+2. **COLORFUL DESIGN**: Use bright colors, gradients, shadows, and modern styling
+3. **STRUCTURED LAYOUT**: Create a real template layout with visual sections
+4. **PLACEHOLDER CONTENT**: Use placeholder text that looks like a real template
+
+FOR FACEBOOK ADS TEMPLATE:
+Create a visual Facebook ad mockup with:
+- Colorful header section (use gradients: blue-to-purple, or rainbow colors)
+- SMALL image placeholder (max 300px height, not too big)
+- Colorful text areas with vibrant fonts (use CSS gradients, rainbow colors, bright text colors)
+- Multiple background colors (gradients, bright sections)
+- Character count indicators with colorful styling
+- Vibrant, eye-catching design with lots of colors
+- Use colorful fonts (rainbow text, gradient text, bright colors)
+- Make backgrounds colorful with gradients and bright colors
+
+FOR OTHER TEMPLATES:
+- Create actual visual layouts, not text descriptions
+- Use CSS styling to make them colorful and attractive
+- Include proper HTML structure with divs, sections, etc.
+- Make it look like a real template, not instructions
+
+CRITICAL RULES:
+- NEVER return text descriptions of templates
+- NEVER return instructions or rules
+- ALWAYS return a complete HTML page with CSS styling
+- ALWAYS make it colorful and visual
+- ALWAYS create an actual template layout
+
+COLOR REQUIREMENTS:
+- Use bright, vibrant colors throughout (red, blue, green, purple, orange, yellow, pink)
+- Apply CSS gradients for backgrounds (linear-gradient, radial-gradient)
+- Use colorful text (rainbow gradients, bright colors, not black/gray)
+- Make image placeholders SMALL (max 300px height, reasonable width)
+- Use multiple background colors in different sections
+- Apply colorful borders, shadows, and effects
+
+SIZING REQUIREMENTS:
+- Image placeholders should be SMALL and reasonable (not huge)
+- Text areas should be appropriately sized
+- Use responsive design with proper proportions
+
+EXAMPLE OF WRONG OUTPUT: "Sponsored · Facebook Ad Template [Your Brand Name Here] 15-25 characters recommended"
+
+EXAMPLE OF CORRECT OUTPUT: A complete HTML page with:
+- Colorful gradient header (blue-to-purple)
+- SMALL image placeholder (300px height max) with colorful border
+- Rainbow gradient text for headlines
+- Colorful backgrounds for each section
+- Bright, vibrant colors throughout
+- No black/gray text - use colorful fonts
+
+Return ONLY a complete HTML document with embedded CSS styling. Start with <!DOCTYPE html> and include all necessary styling to make it visually appealing and colorful.`;
+
+    } else {
+      // For regular document creation requests - return comprehensive content
       systemPrompt = `You are a helpful AI assistant that creates high-quality, professional HTML documents. When a user requests a document, you should:
 
 1. **Be conversational and natural**: Write in a friendly, helpful tone similar to ChatGPT
@@ -287,23 +363,61 @@ Remember: You're not just generating content, you're being a helpful assistant w
       }
     }
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        {
-          role: "system",
-          content: systemPrompt
-        },
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
-      max_tokens: 12000, // Increased from 8000 to allow for longer, more comprehensive content
-      temperature: isModification ? 0.1 : 0.7, // Lower temperature for modifications, higher for creative document generation
+    let generatedContent = '';
+    
+    // Determine which AI service to use based on available API keys
+    // Priority: OpenAI > Gemini > Error (if neither is configured)
+    const useOpenAI = OPENAI.API_KEY && !GEMINI.API_KEY;
+    const useGemini = GEMINI.API_KEY && !OPENAI.API_KEY;
+    
+    // Default to OpenAI if both keys are available, or if neither is available (fallback)
+    const shouldUseOpenAI = useOpenAI || (OPENAI.API_KEY && GEMINI.API_KEY) || (!OPENAI.API_KEY && !GEMINI.API_KEY);
+    
+    console.log('AI Service Selection:', {
+      hasOpenAI: !!OPENAI.API_KEY,
+      hasGemini: !!GEMINI.API_KEY,
+      useOpenAI,
+      useGemini,
+      shouldUseOpenAI,
+      openaiClient: !!openai
     });
+    
+    if (shouldUseOpenAI && openai) {
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: systemPrompt
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        max_tokens: 12000, // Increased from 8000 to allow for longer, more comprehensive content
+        temperature: isModification ? 0.1 : 0.7, // Lower temperature for modifications, higher for creative document generation
+      });
 
-    const generatedContent = completion.choices[0]?.message?.content || '';
+      generatedContent = completion.choices[0]?.message?.content || '';
+    } else if (useGemini) {
+      console.log('Using Gemini');
+      // Use Gemini for completion
+      generatedContent = await createGeminiChatCompletion(
+        systemPrompt,
+        prompt,
+        {
+          maxTokens: 12000,
+          temperature: isModification ? 0.1 : 0.7
+        }
+      );
+    } else if (!openai && !GEMINI.API_KEY) {
+      throw new Error('No AI service configured. Please set either OPENAI_API_KEY or GEMINI_API_KEY environment variable.');
+    } else if (shouldUseOpenAI && !openai) {
+      throw new Error('OpenAI API key is missing or invalid. Please check your OPENAI_API_KEY environment variable.');
+    } else {
+      throw new Error('Unable to determine AI service. Please check your API key configuration.');
+    }
     
     let htmlContent;
     if (isModification && currentContent) {

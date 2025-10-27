@@ -81,6 +81,8 @@ export default function EditorPage() {
   const [downloadFormat, setDownloadFormat] = useState<string>('');
   const [currentFontFamily, setCurrentFontFamily] = useState<string | null>(null);
   const [hasOpenAIKey, setHasOpenAIKey] = useState<boolean>(true);
+  const [hasGeminiKey, setHasGeminiKey] = useState<boolean>(false);
+  const [hasAnyAIKey, setHasAnyAIKey] = useState<boolean>(true);
   
   // Debug font family changes
   const handleFontFamilyChange = (fontFamily: string | null) => {
@@ -188,12 +190,18 @@ export default function EditorPage() {
         if (response.ok) {
           const data = await response.json();
           setHasOpenAIKey(data.hasOpenAIKey);
+          setHasGeminiKey(data.hasGeminiKey);
+          setHasAnyAIKey(data.hasAnyAIKey);
         } else {
           setHasOpenAIKey(false);
+          setHasGeminiKey(false);
+          setHasAnyAIKey(false);
         }
       } catch (error) {
-        console.error('Error checking OpenAI key:', error);
+        console.error('Error checking AI service keys:', error);
         setHasOpenAIKey(false);
+        setHasGeminiKey(false);
+        setHasAnyAIKey(false);
       }
     };
 
@@ -879,8 +887,8 @@ export default function EditorPage() {
               </div>
               
               <div className="p-4 flex flex-col">
-                {/* Warning message when OpenAI key is not available */}
-                {!hasOpenAIKey && (
+                {/* Warning message when AI service keys are not available */}
+                {!hasAnyAIKey && (
                   <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
                     <div className="flex items-start">
                       <div className="flex-shrink-0">
@@ -890,10 +898,10 @@ export default function EditorPage() {
                       </div>
                       <div className="ml-3">
                         <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
-                          OpenAI Key Required
+                          AI Service Key Required
                         </h3>
                         <div className="mt-1 text-sm text-yellow-700 dark:text-yellow-300">
-                          <p>To use chat functionality, please add your OpenAI API key in the environment variables.</p>
+                          <p>To use chat functionality, please add either your OpenAI API key or Gemini API key in the environment variables.</p>
                         </div>
                       </div>
                     </div>
@@ -905,9 +913,9 @@ export default function EditorPage() {
                   {chatHistory.length === 0 ? (
                     <div className="text-center text-gray-500 dark:text-gray-400 py-8">
                       <p className="text-sm">
-                        {hasOpenAIKey 
+                        {hasAnyAIKey 
                           ? "No conversations yet. Start by asking me to modify your document!" 
-                          : "Chat functionality is disabled. Please add OpenAI key to enable AI features."
+                          : "Chat functionality is disabled. Please add an AI service key to enable AI features."
                         }
                       </p>
                     </div>
@@ -947,9 +955,9 @@ export default function EditorPage() {
                 {/* Chat Input - Always visible at bottom */}
                 <div className="space-y-2 border-t border-gray-200 dark:border-gray-700 pt-4 mt-auto">
                   <Textarea
-                    placeholder={hasOpenAIKey 
+                    placeholder={hasAnyAIKey 
                       ? "Describe what you want me to change, add, or remove from your document..."
-                      : "Chat functionality is disabled. Please add OpenAI key to enable AI features."
+                      : "Chat functionality is disabled. Please add an AI service key to enable AI features."
                     }
                     value={docRequest}
                     onChange={(e) => setDocRequest(e.target.value)}
@@ -960,10 +968,10 @@ export default function EditorPage() {
                   
                   <Button 
                     onClick={handleDocRequest} 
-                    disabled={!docRequest.trim() || isLoading || !hasOpenAIKey}
+                    disabled={!docRequest.trim() || isLoading || !hasAnyAIKey}
                     className="w-full"
                   >
-                    {isLoading ? 'Processing...' : hasOpenAIKey ? 'Send' : 'Disabled'}
+                    {isLoading ? 'Processing...' : hasAnyAIKey ? 'Send' : 'Disabled'}
                   </Button>
                 </div>
               </div>
