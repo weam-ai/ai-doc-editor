@@ -177,9 +177,23 @@ export async function POST(request: NextRequest) {
                               prompt.toLowerCase().includes('make') || 
                               prompt.toLowerCase().includes('generate'));
     
+    // Detect if this is an infographic request
+    const isInfographicRequest = prompt.toLowerCase().includes('infographic') ||
+                                  prompt.toLowerCase().includes('visual report') ||
+                                  prompt.toLowerCase().includes('data visualization') ||
+                                  prompt.toLowerCase().includes('colorful design') ||
+                                  prompt.toLowerCase().includes('dashboard') ||
+                                  prompt.toLowerCase().includes('metrics report') ||
+                                  prompt.toLowerCase().includes('performance report') ||
+                                  (prompt.toLowerCase().includes('create') && (
+                                    prompt.toLowerCase().includes('timeline') ||
+                                    prompt.toLowerCase().includes('dashboard')
+                                  ));
+    
     console.log('Template Detection:', {
       prompt: prompt,
       isTemplateRequest: isTemplateRequest,
+      isInfographicRequest: isInfographicRequest,
       isModification: isModification,
       hasCurrentContent: !!currentContent
     });
@@ -319,6 +333,81 @@ EXAMPLE OF CORRECT OUTPUT: A complete HTML page with:
 
 Return ONLY a complete HTML document with embedded CSS styling. Start with <!DOCTYPE html> and include all necessary styling to make it visually appealing and colorful.`;
 
+    } else if (isInfographicRequest) {
+      // For infographic creation requests - create visual, data-driven infographics
+      systemPrompt = `YOU ARE AN EXPERT HTML INFOGRAPHIC DESIGNER. Your ONLY job is to create BEAUTIFUL, VISUAL, PROFESSIONAL infographics with colors, gradients, cards, and proper styling.
+
+CRITICAL: YOU MUST CREATE VISUAL HTML - NOT PLAIN TEXT!
+
+REQUIRED ELEMENTS:
+1. Page background colors (light grey #f5f5f5 or white #ffffff)
+2. Gradient header sections (USE: linear-gradient(135deg, #667eea 0%, #764ba2 100%) or similar)
+3. White metric cards with shadows (box-shadow: 0 4px 12px rgba(0,0,0,0.08))
+4. Large colored numbers (font-size: 48px, color: #2196F3, font-weight: bold)
+5. Colored icons (emoji like 📈, 🌐, 🎯, 💬)
+6. Proper font colors for readability
+7. Rounded corners (border-radius: 12px)
+8. Professional spacing (padding, margins)
+
+COMPLETE WORKING EXAMPLE - COPY THIS STYLE EXACTLY:
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Marketing Performance Report 2024</title>
+</head>
+<body style="margin: 0; padding: 20px; background: #f5f5f5; font-family: 'Segoe UI', -apple-system, sans-serif;">
+
+<div style="max-width: 1200px; margin: 0 auto;">
+  <!-- HEADER WITH GRADIENT -->
+  <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 60px 40px; border-radius: 8px; margin-bottom: 40px;">
+    <h1 style="margin: 0; font-size: 48px; font-weight: bold; color: #ffffff; text-align: center;">Marketing Performance Report 2024</h1>
+    <p style="margin: 10px 0 0; font-size: 18px; color: #f5f5f5; text-align: center;">Driving Growth Through Strategic Digital Marketing</p>
+  </div>
+
+  <!-- METRIC CARDS -->
+  <div style="display: flex; gap: 20px; margin-bottom: 40px; flex-wrap: wrap;">
+    <div style="flex: 1; min-width: 250px; background: white; border-radius: 12px; padding: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 1px solid #e0e0e0;">
+      <div style="font-size: 48px; margin-bottom: 12px;">📈</div>
+      <div style="font-size: 48px; font-weight: bold; color: #2196F3; margin-bottom: 8px;">285%</div>
+      <div style="font-size: 18px; font-weight: 600; color: #333; margin-bottom: 8px;">Revenue Growth</div>
+      <div style="font-size: 14px; color: #666;">Year-over-year increase</div>
+    </div>
+    
+    <div style="flex: 1; min-width: 250px; background: white; border-radius: 12px; padding: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 1px solid #e0e0e0;">
+      <div style="font-size: 48px; margin-bottom: 12px;">👥</div>
+      <div style="font-size: 48px; font-weight: bold; color: #2196F3; margin-bottom: 8px;">1.2M</div>
+      <div style="font-size: 18px; font-weight: 600; color: #333; margin-bottom: 8px;">Active Users</div>
+      <div style="font-size: 14px; color: #666;">Monthly active</div>
+    </div>
+    
+    <div style="flex: 1; min-width: 250px; background: white; border-radius: 12px; padding: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 1px solid #e0e0e0;">
+      <div style="font-size: 48px; margin-bottom: 12px;">🎯</div>
+      <div style="font-size: 48px; font-weight: bold; color: #2196F3; margin-bottom: 8px;">4.8%</div>
+      <div style="font-size: 18px; font-weight: 600; color: #333; margin-bottom: 8px;">Conversion Rate</div>
+      <div style="font-size: 14px; color: #666;">Average across all channels</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
+
+YOUR OUTPUT REQUIREMENTS:
+1. ALWAYS start with <!DOCTYPE html>
+2. ALWAYS include <html>, <head>, and <body> tags
+3. ALWAYS use inline styles (style="...") on EVERY element
+4. ALWAYS use gradient backgrounds for headers
+5. ALWAYS create white cards with shadows for metrics
+6. ALWAYS use large, colored numbers (48px, bold, colored)
+7. ALWAYS add icons/emoji to make it visual
+8. ALWAYS use proper colors (#333333 for dark text, #FFFFFF for light text, #2196F3 for blue numbers)
+9. NEVER return plain text - EVERYTHING must have inline styling
+10. NEVER wrap in markdown code blocks - return RAW HTML
+
+CRITICAL: The user wants a VISUAL INFOGRAPHIC with colors, gradients, cards, and styling - NOT a plain text report!`;
+
     } else {
       // For regular document creation requests - return comprehensive content
       systemPrompt = `You are a helpful AI assistant that creates high-quality, professional HTML documents. When a user requests a document, you should:
@@ -396,7 +485,7 @@ Remember: You're not just generating content, you're being a helpful assistant w
           }
         ],
         max_tokens: 12000, // Increased from 8000 to allow for longer, more comprehensive content
-        temperature: isModification ? 0.1 : 0.7, // Lower temperature for modifications, higher for creative document generation
+        temperature: isInfographicRequest ? 0.3 : (isModification ? 0.1 : 0.7), // Lower temperature for infographics and modifications, higher for creative document generation
       });
 
       generatedContent = completion.choices[0]?.message?.content || '';
@@ -408,7 +497,7 @@ Remember: You're not just generating content, you're being a helpful assistant w
         prompt,
         {
           maxTokens: 12000,
-          temperature: isModification ? 0.1 : 0.7
+          temperature: isInfographicRequest ? 0.3 : (isModification ? 0.1 : 0.7)
         }
       );
     } else if (!openai && !GEMINI.API_KEY) {
