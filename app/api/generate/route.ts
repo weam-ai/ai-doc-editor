@@ -190,13 +190,6 @@ export async function POST(request: NextRequest) {
                                     prompt.toLowerCase().includes('dashboard')
                                   ));
     
-    console.log('Template Detection:', {
-      prompt: prompt,
-      isTemplateRequest: isTemplateRequest,
-      isInfographicRequest: isInfographicRequest,
-      isModification: isModification,
-      hasCurrentContent: !!currentContent
-    });
     
     if (isModification && currentContent) {
       // For modification requests, instruct AI to modify existing HTML
@@ -339,74 +332,71 @@ Return ONLY a complete HTML document with embedded CSS styling. Start with <!DOC
 
 CRITICAL: YOU MUST CREATE VISUAL HTML - NOT PLAIN TEXT!
 
-REQUIRED ELEMENTS:
-1. Page background colors (light grey #f5f5f5 or white #ffffff)
-2. Gradient header sections (USE: linear-gradient(135deg, #667eea 0%, #764ba2 100%) or similar)
-3. White metric cards with shadows (box-shadow: 0 4px 12px rgba(0,0,0,0.08))
-4. Large colored numbers (font-size: 48px, color: #2196F3, font-weight: bold)
-5. Colored icons (emoji like 📈, 🌐, 🎯, 💬)
-6. Proper font colors for readability
-7. Rounded corners (border-radius: 12px)
-8. Professional spacing (padding, margins)
+CREATIVE FREEDOM - VARIETY IS KEY!
+- **VARY YOUR LAYOUTS**: Don't use the same layout every time!
+- For social media infographics: Use vertical/portrait layouts with bold headlines
+- For dashboards: Use grid layouts with multiple metric cards
+- For timelines: Use horizontal or vertical timeline layouts
+- For comparisons: Use side-by-side or split layouts
+- For Facebook ads: Create compact, eye-catching designs with clear CTAs
+- For presentations: Use clean, hierarchical layouts with sections
+- **BE CREATIVE**: Each infographic should have a UNIQUE layout based on the user's specific request!
 
-COMPLETE WORKING EXAMPLE - COPY THIS STYLE EXACTLY:
+ESSENTIAL VISUAL ELEMENTS:
+1. **Backgrounds**: Use gradients (linear-gradient, radial-gradient), colorful backgrounds, or light greys (#f5f5f5, #ffffff, #f0f0f0)
+2. **Gradients**: Create varied gradients - blue-to-purple, orange-to-pink, green-to-blue, rainbow colors
+3. **Cards & Boxes**: White cards with shadows, colorful bordered sections, gradient boxes
+4. **Typography**: Large numbers (36px-72px, bold), colored text, varied font sizes
+5. **Icons**: Use emoji (📈, 🌐, 🎯, 💬, 🚀, ✨, ⭐, etc.) or create icon-like elements
+6. **Colors**: Use vibrant colors - blues (#2196F3, #4A90E2), purples (#9B59B6), oranges (#FF9800), greens (#4CAF50), pinks (#E91E63)
+7. **Spacing**: Professional padding (20px-40px) and margins
+8. **Borders**: Rounded corners (border-radius: 8px-16px)
+9. **Shadows**: box-shadow: 0 2px 8px rgba(0,0,0,0.1) or 0 4px 12px rgba(0,0,0,0.08)
 
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>Marketing Performance Report 2024</title>
-</head>
-<body style="margin: 0; padding: 20px; background: #f5f5f5; font-family: 'Segoe UI', -apple-system, sans-serif;">
+LAYOUT INSPIRATIONS:
 
-<div style="max-width: 1200px; margin: 0 auto;">
-  <!-- HEADER WITH GRADIENT -->
-  <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 60px 40px; border-radius: 8px; margin-bottom: 40px;">
-    <h1 style="margin: 0; font-size: 48px; font-weight: bold; color: #ffffff; text-align: center;">Marketing Performance Report 2024</h1>
-    <p style="margin: 10px 0 0; font-size: 18px; color: #f5f5f5; text-align: center;">Driving Growth Through Strategic Digital Marketing</p>
-  </div>
+For Social Media Infographics:
+- Vertical layout (portrait orientation)
+- Bold headline section at top
+- Icon + stat combinations
+- Call-to-action section at bottom
+- Compact design fitting mobile screens
 
-  <!-- METRIC CARDS -->
-  <div style="display: flex; gap: 20px; margin-bottom: 40px; flex-wrap: wrap;">
-    <div style="flex: 1; min-width: 250px; background: white; border-radius: 12px; padding: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 1px solid #e0e0e0;">
-      <div style="font-size: 48px; margin-bottom: 12px;">📈</div>
-      <div style="font-size: 48px; font-weight: bold; color: #2196F3; margin-bottom: 8px;">285%</div>
-      <div style="font-size: 18px; font-weight: 600; color: #333; margin-bottom: 8px;">Revenue Growth</div>
-      <div style="font-size: 14px; color: #666;">Year-over-year increase</div>
-    </div>
-    
-    <div style="flex: 1; min-width: 250px; background: white; border-radius: 12px; padding: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 1px solid #e0e0e0;">
-      <div style="font-size: 48px; margin-bottom: 12px;">👥</div>
-      <div style="font-size: 48px; font-weight: bold; color: #2196F3; margin-bottom: 8px;">1.2M</div>
-      <div style="font-size: 18px; font-weight: 600; color: #333; margin-bottom: 8px;">Active Users</div>
-      <div style="font-size: 14px; color: #666;">Monthly active</div>
-    </div>
-    
-    <div style="flex: 1; min-width: 250px; background: white; border-radius: 12px; padding: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 1px solid #e0e0e0;">
-      <div style="font-size: 48px; margin-bottom: 12px;">🎯</div>
-      <div style="font-size: 48px; font-weight: bold; color: #2196F3; margin-bottom: 8px;">4.8%</div>
-      <div style="font-size: 18px; font-weight: 600; color: #333; margin-bottom: 8px;">Conversion Rate</div>
-      <div style="font-size: 14px; color: #666;">Average across all channels</div>
-    </div>
-  </div>
-</div>
+For Dashboards:
+- Grid of metric cards
+- Header section with title
+- Multiple rows/columns of data
+- Charts representation with colored bars
+- Filter or category sections
 
-</body>
-</html>
+For Timelines:
+- Horizontal or vertical flow
+- Milestone markers
+- Connecting lines
+- Date labels
+- Event descriptions
 
-YOUR OUTPUT REQUIREMENTS:
+For Comparisons:
+- Split-screen layouts
+- Side-by-side sections
+- Before/after sections
+- Venn diagrams (CSS-based)
+- Pros/cons lists with icons
+
+OUTPUT REQUIREMENTS:
 1. ALWAYS start with <!DOCTYPE html>
 2. ALWAYS include <html>, <head>, and <body> tags
-3. ALWAYS use inline styles (style="...") on EVERY element
-4. ALWAYS use gradient backgrounds for headers
-5. ALWAYS create white cards with shadows for metrics
-6. ALWAYS use large, colored numbers (48px, bold, colored)
+3. ALWAYS use inline styles (style="...") on EVERY element - NO external CSS
+4. VARY your gradients and color schemes - don't use the same colors every time!
+5. VARY your layout structures - be creative based on user's request
+6. ALWAYS use large, colored numbers/text (36px+, bold, colored)
 7. ALWAYS add icons/emoji to make it visual
-8. ALWAYS use proper colors (#333333 for dark text, #FFFFFF for light text, #2196F3 for blue numbers)
+8. ALWAYS use proper colors for readability (#333 for dark, #FFF for light, vibrant colors for highlights)
 9. NEVER return plain text - EVERYTHING must have inline styling
 10. NEVER wrap in markdown code blocks - return RAW HTML
+11. **IMPORTANT**: Analyze the user's request and create an appropriate layout - for Facebook ads, make it compact; for dashboards, make it grid-based; for timelines, make it chronological; etc.
 
-CRITICAL: The user wants a VISUAL INFOGRAPHIC with colors, gradients, cards, and styling - NOT a plain text report!`;
+CRITICAL: Create a UNIQUE, VISUAL infographic with varied layouts, colors, gradients, and styling - NOT the same template every time!`;
 
     } else {
       // For regular document creation requests - return comprehensive content
@@ -462,15 +452,6 @@ Remember: You're not just generating content, you're being a helpful assistant w
     // Default to OpenAI if both keys are available, or if neither is available (fallback)
     const shouldUseOpenAI = useOpenAI || (OPENAI.API_KEY && GEMINI.API_KEY) || (!OPENAI.API_KEY && !GEMINI.API_KEY);
     
-    console.log('AI Service Selection:', {
-      hasOpenAI: !!OPENAI.API_KEY,
-      hasGemini: !!GEMINI.API_KEY,
-      useOpenAI,
-      useGemini,
-      shouldUseOpenAI,
-      openaiClient: !!openai
-    });
-    
     if (shouldUseOpenAI && openai) {
       const completion = await openai.chat.completions.create({
         model: "gpt-4o",
@@ -489,8 +470,7 @@ Remember: You're not just generating content, you're being a helpful assistant w
       });
 
       generatedContent = completion.choices[0]?.message?.content || '';
-    } else if (useGemini) {
-      console.log('Using Gemini');
+    } else if (useGemini) {      
       // Use Gemini for completion
       generatedContent = await createGeminiChatCompletion(
         systemPrompt,
