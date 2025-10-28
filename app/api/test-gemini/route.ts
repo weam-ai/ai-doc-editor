@@ -13,32 +13,17 @@ export async function GET() {
 
     const genAI = new GoogleGenerativeAI(GEMINI.API_KEY);
     
-    // Try to list available models
-    try {
-      const models = await genAI.listModels();
-      console.log('Available Gemini models:', models);
-      
-      return NextResponse.json({ 
-        success: true,
-        message: 'Gemini API connection successful',
-        available: true,
-        models: models
-      });
-    } catch (listError) {
-      console.error('Error listing models:', listError);
-      
-      // Try a simple generation test instead
-      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-      const result = await model.generateContent("Hello, test message");
-      const response = await result.response;
-      
-      return NextResponse.json({ 
-        success: true,
-        message: 'Gemini API connection successful (test generation worked)',
-        available: true,
-        testResponse: response.text()
-      });
-    }
+    // Try a simple generation test
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const result = await model.generateContent("Hello, test message");
+    const response = await result.response;
+    
+    return NextResponse.json({ 
+      success: true,
+      message: 'Gemini API connection successful',
+      available: true,
+      testResponse: response.text()
+    });
   } catch (error) {
     console.error('Gemini API test failed:', error);
     return NextResponse.json({ 
