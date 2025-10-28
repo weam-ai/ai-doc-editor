@@ -27,6 +27,7 @@ export async function* createGeminiChatCompletionStream(
     try {
       console.log(`Trying Gemini model with streaming: ${modelName}`);
       
+      
       const model = genAI.getGenerativeModel({ 
         model: modelName,
         generationConfig: {
