@@ -3,11 +3,6 @@ import { GEMINI } from '@/app/config/config';
 
 const genAI = new GoogleGenerativeAI(GEMINI.API_KEY!);
 
-export interface GeminiMessage {
-  role: 'user' | 'model';
-  parts: string;
-}
-
 export interface GeminiCompletionOptions {
   maxTokens?: number;
   temperature?: number;
@@ -19,52 +14,18 @@ export interface GeminiImageResponse {
   mimeType?: string;
 }
 
-export async function createGeminiCompletion(
-  messages: GeminiMessage[],
-  options: GeminiCompletionOptions = {}
-): Promise<string> {
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-  
-  // Convert messages to the format expected by Gemini
-  const chat = model.startChat({
-    history: [],
-  });
-
-  // Get the last user message (since we're doing stateless completions)
-  const lastMessage = messages[messages.length - 1];
-  
-  if (lastMessage.role !== 'user') {
-    throw new Error('Last message must be from user');
-  }
-
-  // Combine system prompt and user message
-  const systemMessage = messages.find(m => m.role === 'user' && m.parts.includes('system'));
-  const userMessage = messages[messages.length - 1];
-  
-  let prompt = '';
-  if (systemMessage) {
-    prompt = systemMessage.parts + '\n\n' + userMessage.parts;
-  } else {
-    prompt = userMessage.parts;
-  }
-
-  const result = await model.generateContent(prompt);
-  const response = await result.response;
-  return response.text();
-}
-
-export async function createGeminiChatCompletion(
+export async function* createGeminiChatCompletionStream(
   systemPrompt: string,
   userPrompt: string,
   options: GeminiCompletionOptions = {}
-): Promise<string> {
+): AsyncGenerator<string> {
   // Try different model names in order of preference
   const modelNames = ["gemini-2.5-flash", "gemini-pro", "gemini-1.5-flash", "gemini-1.5-pro"];
   let lastError: Error | null = null;
 
   for (const modelName of modelNames) {
     try {
-      console.log(`Trying Gemini model: ${modelName}`);
+      console.log(`Trying Gemini model with streaming: ${modelName}`);
       
       const model = genAI.getGenerativeModel({ 
         model: modelName,
@@ -76,13 +37,20 @@ export async function createGeminiChatCompletion(
 
       const prompt = `${systemPrompt}\n\n${userPrompt}`;
       
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
+      const result = await model.generateContentStream(prompt);
       
-      console.log(`Successfully used Gemini model: ${modelName}`);
-      return response.text();
+      console.log(`Successfully using Gemini model with streaming: ${modelName}`);
+      
+      for await (const chunk of result.stream) {
+        const chunkText = chunk.text();
+        if (chunkText) {
+          yield chunkText;
+        }
+      }
+      
+      return; // Success
     } catch (error) {
-      console.warn(`Failed to use Gemini model ${modelName}:`, error);
+      console.warn(`Failed to use Gemini model with streaming ${modelName}:`, error);
       lastError = error as Error;
       continue;
     }

@@ -4,7 +4,7 @@ import dbConnect from '@/lib/db';
 import ChatHistory from '@/models/ChatHistory';
 import { getSession } from '@/app/config/withSession';
 import { OPENAI, GEMINI } from '@/app/config/config';
-import { createGeminiChatCompletion } from '@/lib/gemini';
+import { createGeminiChatCompletionStream } from '@/lib/gemini';
 
 // Initialize OpenAI client only when API key is available
 const openai = OPENAI.API_KEY ? new OpenAI({
@@ -344,7 +344,7 @@ CREATIVE FREEDOM - VARIETY IS KEY!
 
 ESSENTIAL VISUAL ELEMENTS:
 1. **Backgrounds**: Use gradients (linear-gradient, radial-gradient), colorful backgrounds, or light greys (#f5f5f5, #ffffff, #f0f0f0)
-2. **Gradients**: Create varied gradients - blue-to-purple, orange-to-pink, green-to-blue, rainbow colors
+2. **Gradients**: Create varied gradients - #A8C5FF-to-#C6B8FF, #FFD3A5-to-#FFAAA6, #B2F0E3-to-#A8D8FF, rainbow colors(#FFD3A5,#FFAAA6,#D4A5FF,#A5D8FF,#A5FFD6)
 3. **Cards & Boxes**: White cards with shadows, colorful bordered sections, gradient boxes
 4. **Typography**: Large numbers (36px-72px, bold), colored text, varied font sizes
 5. **Icons**: Use emoji (📈, 🌐, 🎯, 💬, 🚀, ✨, ⭐, etc.) or create icon-like elements
@@ -452,6 +452,43 @@ Remember: You're not just generating content, you're being a helpful assistant w
     // Default to OpenAI if both keys are available, or if neither is available (fallback)
     const shouldUseOpenAI = useOpenAI || (OPENAI.API_KEY && GEMINI.API_KEY) || (!OPENAI.API_KEY && !GEMINI.API_KEY);
     
+    // Handle streaming for Gemini (always stream when using Gemini)
+    if (useGemini) {
+      const encoder = new TextEncoder();
+      
+      // Create a readable stream for streaming response
+      const readableStream = new ReadableStream({
+        async start(controller) {
+          try {
+            let fullContent = '';
+            for await (const chunk of createGeminiChatCompletionStream(
+              systemPrompt,
+              prompt,
+              {
+                maxTokens: 12000,
+                temperature: isInfographicRequest ? 0.3 : (isModification ? 0.1 : 0.7)
+              }
+            )) {
+              fullContent += chunk;
+              // Send each chunk to the client
+              controller.enqueue(encoder.encode(chunk));
+            }
+            controller.close();
+          } catch (error) {
+            controller.error(error);
+          }
+        },
+      });
+
+      return new Response(readableStream, {
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        },
+      });
+    }
+    
     if (shouldUseOpenAI && openai) {
       const completion = await openai.chat.completions.create({
         model: "gpt-4o",
@@ -470,16 +507,6 @@ Remember: You're not just generating content, you're being a helpful assistant w
       });
 
       generatedContent = completion.choices[0]?.message?.content || '';
-    } else if (useGemini) {      
-      // Use Gemini for completion
-      generatedContent = await createGeminiChatCompletion(
-        systemPrompt,
-        prompt,
-        {
-          maxTokens: 12000,
-          temperature: isInfographicRequest ? 0.3 : (isModification ? 0.1 : 0.7)
-        }
-      );
     } else if (!openai && !GEMINI.API_KEY) {
       throw new Error('No AI service configured. Please set either OPENAI_API_KEY or GEMINI_API_KEY environment variable.');
     } else if (shouldUseOpenAI && !openai) {

@@ -513,8 +513,14 @@ export default function EditorPage() {
 
     try {
       // Call OpenAI API to handle the request intelligently
-      const aiResponse = await generateAIResponse(userMessage, contentHtml);
+      const aiResponse = await generateAIResponse(userMessage, contentHtml, (chunk: string) => {
+        // Update content progressively as chunks arrive (for streaming)
+        setContentHtml(chunk);
+        setContent(chunk.replace(/<[^>]*>/g, '')); // Strip HTML for markdown
+        setContentVersion(prev => prev + 1); // Force editor re-render
+      });
       
+      // Final update (in case of non-streaming or to ensure final state)
       setContentHtml(aiResponse);
       setContent(aiResponse.replace(/<[^>]*>/g, '')); // Strip HTML for markdown
       setHasUnsavedChanges(true);
@@ -555,7 +561,7 @@ export default function EditorPage() {
     }
   };
 
-  const generateAIResponse = async (request: string, currentContent: string) => {
+  const generateAIResponse = async (request: string, currentContent: string, onChunk?: (chunk: string) => void) => {
     // Detect if this is a new/template document or an existing document with real content
     const isNewOrTemplateDocument = (content: string) => {
       // Check for default blank document content
@@ -673,7 +679,7 @@ export default function EditorPage() {
                           (!isTemplate || isFormFillingRequest || hasFormElements);
     
     try {
-      // Call OpenAI API to handle the request intelligently
+      // Call AI API to handle the request intelligently
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_PATH}/api/generate`, {
         method: 'POST',
         headers: {
@@ -691,6 +697,41 @@ export default function EditorPage() {
         throw new Error(`API request failed: ${response.status}`);
       }
 
+      // Handle streaming response for Gemini (always streams)
+      if (response.headers.get('content-type')?.includes('text/event-stream')) {
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+        let accumulatedContent = '';
+        
+        if (!reader) {
+          throw new Error('Stream reader not available');
+        }
+        
+        // Read chunks as they arrive
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          const chunk = decoder.decode(value, { stream: true });
+          accumulatedContent += chunk;
+          
+          // Call onChunk callback to update UI progressively
+          if (onChunk) {
+            onChunk(accumulatedContent);
+          }
+        }
+        
+        // Return accumulated content
+        const htmlContent = accumulatedContent;
+        
+        if (htmlContent && htmlContent.trim().startsWith('<')) {
+          return htmlContent;
+        } else {
+          return accumulatedContent;
+        }
+      }
+      
+      // Handle non-streaming response (OpenAI or Gemini non-streaming)
       const data = await response.json();
       
       if (data.contentHtml && data.contentHtml.trim().startsWith('<')) {
@@ -719,7 +760,7 @@ export default function EditorPage() {
         return currentContent;
       }
     } catch (error) {
-      console.error('Error calling OpenAI API:', error);
+      console.error('Error calling AI API:', error);
       // Fallback to original content if API fails
       return currentContent;
     }
