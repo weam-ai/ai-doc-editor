@@ -6,6 +6,7 @@ export async function GET() {
     const hasOpenAIKey = !!OPENAI.API_KEY && OPENAI.API_KEY !== 'your-openai-api-key';
     const hasGeminiKey = !!GEMINI.API_KEY && GEMINI.API_KEY !== 'your-gemini-api-key';
     const hasAnyAIKey = hasOpenAIKey || hasGeminiKey;
+    console.log('hasOpenAIKey', GEMINI.API_KEY, !!GEMINI.API_KEY, GEMINI.API_KEY, hasGeminiKey);
     
     let message = '';
     if (hasOpenAIKey && hasGeminiKey) {
