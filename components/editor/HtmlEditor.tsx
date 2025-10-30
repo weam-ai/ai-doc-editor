@@ -1998,7 +1998,8 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
           .preserve-styles-editor {
             border: 1px solid #e5e7eb;
             border-radius: 0.5rem;
-            overflow: hidden;
+            overflow: auto;
+            max-height: 600px;
           }
           
           .editable-content {
@@ -2006,7 +2007,6 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
             padding: 16px !important;
             outline: none;
             background: white;
-            overflow: auto;
             font-family: system-ui, -apple-system, sans-serif;
             font-size: 14px;
             line-height: 1.5;
@@ -2332,7 +2332,7 @@ export default function HtmlEditor({ content, onChange, editorRef, onFontFamilyC
 
         <TabsContent value="preview" className="space-y-4">
           <Card className="p-6">
-            <div className="bg-white min-h-[500px] overflow-auto">
+            <div className="bg-white min-h-[500px]">
               <PreserveStyleEditor
                 content={extractBodyContent(htmlContent)}
                 onChange={handlePreviewChange}
@@ -2345,12 +2345,12 @@ export default function HtmlEditor({ content, onChange, editorRef, onFontFamilyC
 
         <TabsContent value="html" className="space-y-4">
           <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4">HTML Source Code</h3>
+            {/* <h3 className="text-lg font-semibold mb-4">HTML Source Code</h3> */}
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-2">
+                {/* <label className="block text-sm font-medium mb-2">
                   Edit HTML Content
-                </label>
+                </label> */}
                 <Textarea
                   value={htmlContent}
                   onChange={(e) => handleHtmlCodeChange(e.target.value)}
