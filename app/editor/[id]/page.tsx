@@ -81,6 +81,8 @@ export default function EditorPage() {
   const [downloadFormat, setDownloadFormat] = useState<string>('');
   const [currentFontFamily, setCurrentFontFamily] = useState<string | null>(null);
   const [hasOpenAIKey, setHasOpenAIKey] = useState<boolean>(true);
+  const [hasGeminiKey, setHasGeminiKey] = useState<boolean>(false);
+  const [hasAnyAIKey, setHasAnyAIKey] = useState<boolean>(true);
   
   // Debug font family changes
   const handleFontFamilyChange = (fontFamily: string | null) => {
@@ -188,12 +190,18 @@ export default function EditorPage() {
         if (response.ok) {
           const data = await response.json();
           setHasOpenAIKey(data.hasOpenAIKey);
+          setHasGeminiKey(data.hasGeminiKey);
+          setHasAnyAIKey(data.hasAnyAIKey);
         } else {
           setHasOpenAIKey(false);
+          setHasGeminiKey(false);
+          setHasAnyAIKey(false);
         }
       } catch (error) {
-        console.error('Error checking OpenAI key:', error);
+        console.error('Error checking AI service keys:', error);
         setHasOpenAIKey(false);
+        setHasGeminiKey(false);
+        setHasAnyAIKey(false);
       }
     };
 
@@ -505,8 +513,14 @@ export default function EditorPage() {
 
     try {
       // Call OpenAI API to handle the request intelligently
-      const aiResponse = await generateAIResponse(userMessage, contentHtml);
+      const aiResponse = await generateAIResponse(userMessage, contentHtml, (chunk: string) => {
+        // Update content progressively as chunks arrive (for streaming)
+        setContentHtml(chunk);
+        setContent(chunk.replace(/<[^>]*>/g, '')); // Strip HTML for markdown
+        setContentVersion(prev => prev + 1); // Force editor re-render
+      });
       
+      // Final update (in case of non-streaming or to ensure final state)
       setContentHtml(aiResponse);
       setContent(aiResponse.replace(/<[^>]*>/g, '')); // Strip HTML for markdown
       setHasUnsavedChanges(true);
@@ -547,7 +561,7 @@ export default function EditorPage() {
     }
   };
 
-  const generateAIResponse = async (request: string, currentContent: string) => {
+  const generateAIResponse = async (request: string, currentContent: string, onChunk?: (chunk: string) => void) => {
     // Detect if this is a new/template document or an existing document with real content
     const isNewOrTemplateDocument = (content: string) => {
       // Check for default blank document content
@@ -665,7 +679,7 @@ export default function EditorPage() {
                           (!isTemplate || isFormFillingRequest || hasFormElements);
     
     try {
-      // Call OpenAI API to handle the request intelligently
+      // Call AI API to handle the request intelligently
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_PATH}/api/generate`, {
         method: 'POST',
         headers: {
@@ -683,6 +697,41 @@ export default function EditorPage() {
         throw new Error(`API request failed: ${response.status}`);
       }
 
+      // Handle streaming response for Gemini (always streams)
+      if (response.headers.get('content-type')?.includes('text/event-stream')) {
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+        let accumulatedContent = '';
+        
+        if (!reader) {
+          throw new Error('Stream reader not available');
+        }
+        
+        // Read chunks as they arrive
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          const chunk = decoder.decode(value, { stream: true });
+          accumulatedContent += chunk;
+          
+          // Call onChunk callback to update UI progressively
+          if (onChunk) {
+            onChunk(accumulatedContent);
+          }
+        }
+        
+        // Return accumulated content
+        const htmlContent = accumulatedContent;
+        
+        if (htmlContent && htmlContent.trim().startsWith('<')) {
+          return htmlContent;
+        } else {
+          return accumulatedContent;
+        }
+      }
+      
+      // Handle non-streaming response (OpenAI or Gemini non-streaming)
       const data = await response.json();
       
       if (data.contentHtml && data.contentHtml.trim().startsWith('<')) {
@@ -711,7 +760,7 @@ export default function EditorPage() {
         return currentContent;
       }
     } catch (error) {
-      console.error('Error calling OpenAI API:', error);
+      console.error('Error calling AI API:', error);
       // Fallback to original content if API fails
       return currentContent;
     }
@@ -879,8 +928,8 @@ export default function EditorPage() {
               </div>
               
               <div className="p-4 flex flex-col">
-                {/* Warning message when OpenAI key is not available */}
-                {!hasOpenAIKey && (
+                {/* Warning message when AI service keys are not available */}
+                {!hasAnyAIKey && (
                   <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
                     <div className="flex items-start">
                       <div className="flex-shrink-0">
@@ -890,10 +939,10 @@ export default function EditorPage() {
                       </div>
                       <div className="ml-3">
                         <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
-                          OpenAI Key Required
+                          AI Service Key Required
                         </h3>
                         <div className="mt-1 text-sm text-yellow-700 dark:text-yellow-300">
-                          <p>To use chat functionality, please add your OpenAI API key in the environment variables.</p>
+                          <p>To use chat functionality, please add either your OpenAI API key or Gemini API key in the environment variables.</p>
                         </div>
                       </div>
                     </div>
@@ -905,9 +954,9 @@ export default function EditorPage() {
                   {chatHistory.length === 0 ? (
                     <div className="text-center text-gray-500 dark:text-gray-400 py-8">
                       <p className="text-sm">
-                        {hasOpenAIKey 
+                        {hasAnyAIKey 
                           ? "No conversations yet. Start by asking me to modify your document!" 
-                          : "Chat functionality is disabled. Please add OpenAI key to enable AI features."
+                          : "Chat functionality is disabled. Please add an AI service key to enable AI features."
                         }
                       </p>
                     </div>
@@ -947,9 +996,9 @@ export default function EditorPage() {
                 {/* Chat Input - Always visible at bottom */}
                 <div className="space-y-2 border-t border-gray-200 dark:border-gray-700 pt-4 mt-auto">
                   <Textarea
-                    placeholder={hasOpenAIKey 
+                    placeholder={hasAnyAIKey 
                       ? "Describe what you want me to change, add, or remove from your document..."
-                      : "Chat functionality is disabled. Please add OpenAI key to enable AI features."
+                      : "Chat functionality is disabled. Please add an AI service key to enable AI features."
                     }
                     value={docRequest}
                     onChange={(e) => setDocRequest(e.target.value)}
@@ -960,10 +1009,10 @@ export default function EditorPage() {
                   
                   <Button 
                     onClick={handleDocRequest} 
-                    disabled={!docRequest.trim() || isLoading || !hasOpenAIKey}
+                    disabled={!docRequest.trim() || isLoading || !hasAnyAIKey}
                     className="w-full"
                   >
-                    {isLoading ? 'Processing...' : hasOpenAIKey ? 'Send' : 'Disabled'}
+                    {isLoading ? 'Processing...' : hasAnyAIKey ? 'Send' : 'Disabled'}
                   </Button>
                 </div>
               </div>

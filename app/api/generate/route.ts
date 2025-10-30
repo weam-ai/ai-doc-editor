@@ -3,11 +3,13 @@ import OpenAI from 'openai';
 import dbConnect from '@/lib/db';
 import ChatHistory from '@/models/ChatHistory';
 import { getSession } from '@/app/config/withSession';
-import { OPENAI } from '@/app/config/config';
+import { OPENAI, GEMINI } from '@/app/config/config';
+import { createGeminiChatCompletionStream } from '@/lib/gemini';
 
-const openai = new OpenAI({
+// Initialize OpenAI client only when API key is available
+const openai = OPENAI.API_KEY ? new OpenAI({
   apiKey: OPENAI.API_KEY,
-});
+}) : null;
 
 // Function to detect if meaningful changes were made
 function hasMeaningfulChanges(oldContent: string, newContent: string): boolean {
@@ -169,6 +171,26 @@ export async function POST(request: NextRequest) {
 
     let systemPrompt = '';
     
+    // Detect if this is a template creation request
+    const isTemplateRequest = prompt.toLowerCase().includes('template') && 
+                             (prompt.toLowerCase().includes('create') || 
+                              prompt.toLowerCase().includes('make') || 
+                              prompt.toLowerCase().includes('generate'));
+    
+    // Detect if this is an infographic request
+    const isInfographicRequest = prompt.toLowerCase().includes('infographic') ||
+                                  prompt.toLowerCase().includes('visual report') ||
+                                  prompt.toLowerCase().includes('data visualization') ||
+                                  prompt.toLowerCase().includes('colorful design') ||
+                                  prompt.toLowerCase().includes('dashboard') ||
+                                  prompt.toLowerCase().includes('metrics report') ||
+                                  prompt.toLowerCase().includes('performance report') ||
+                                  (prompt.toLowerCase().includes('create') && (
+                                    prompt.toLowerCase().includes('timeline') ||
+                                    prompt.toLowerCase().includes('dashboard')
+                                  ));
+    
+    
     if (isModification && currentContent) {
       // For modification requests, instruct AI to modify existing HTML
       systemPrompt = `You are an expert HTML document modifier. Your task is to modify an existing HTML document based on ANY user request.
@@ -243,8 +265,141 @@ export async function POST(request: NextRequest) {
     - Be thorough in your transformation - don't just change the title, update everything that should change
 
     DO NOT create a new document. MODIFY the existing one. Return the SAME document structure with filled form fields.`;
-} else {
-      // For new document creation requests - return direct HTML
+    } else if (isTemplateRequest) {
+      // For template creation requests - create visual templates
+      systemPrompt = `You are a creative AI assistant that creates colorful, visual HTML templates. 
+
+CRITICAL: You must create a VISUAL, COLORFUL HTML TEMPLATE - NOT text descriptions or instructions!
+
+TEMPLATE REQUIREMENTS:
+1. **VISUAL HTML TEMPLATE**: Create an actual HTML page with embedded CSS styling
+2. **COLORFUL DESIGN**: Use bright colors, gradients, shadows, and modern styling
+3. **STRUCTURED LAYOUT**: Create a real template layout with visual sections
+4. **PLACEHOLDER CONTENT**: Use placeholder text that looks like a real template
+
+FOR FACEBOOK ADS TEMPLATE:
+Create a visual Facebook ad mockup with:
+- Colorful header section (use gradients: blue-to-purple, or rainbow colors)
+- SMALL image placeholder (max 300px height, not too big)
+- Colorful text areas with vibrant fonts (use CSS gradients, rainbow colors, bright text colors)
+- Multiple background colors (gradients, bright sections)
+- Character count indicators with colorful styling
+- Vibrant, eye-catching design with lots of colors
+- Use colorful fonts (rainbow text, gradient text, bright colors)
+- Make backgrounds colorful with gradients and bright colors
+
+FOR OTHER TEMPLATES:
+- Create actual visual layouts, not text descriptions
+- Use CSS styling to make them colorful and attractive
+- Include proper HTML structure with divs, sections, etc.
+- Make it look like a real template, not instructions
+
+CRITICAL RULES:
+- NEVER return text descriptions of templates
+- NEVER return instructions or rules
+- ALWAYS return a complete HTML page with CSS styling
+- ALWAYS make it colorful and visual
+- ALWAYS create an actual template layout
+
+COLOR REQUIREMENTS:
+- Use bright, vibrant colors throughout (red, blue, green, purple, orange, yellow, pink)
+- Apply CSS gradients for backgrounds (linear-gradient, radial-gradient)
+- Use colorful text (rainbow gradients, bright colors, not black/gray)
+- Make image placeholders SMALL (max 300px height, reasonable width)
+- Use multiple background colors in different sections
+- Apply colorful borders, shadows, and effects
+
+SIZING REQUIREMENTS:
+- Image placeholders should be SMALL and reasonable (not huge)
+- Text areas should be appropriately sized
+- Use responsive design with proper proportions
+
+EXAMPLE OF WRONG OUTPUT: "Sponsored · Facebook Ad Template [Your Brand Name Here] 15-25 characters recommended"
+
+EXAMPLE OF CORRECT OUTPUT: A complete HTML page with:
+- Colorful gradient header (blue-to-purple)
+- SMALL image placeholder (300px height max) with colorful border
+- Rainbow gradient text for headlines
+- Colorful backgrounds for each section
+- Bright, vibrant colors throughout
+- No black/gray text - use colorful fonts
+
+Return ONLY a complete HTML document with embedded CSS styling. Start with <!DOCTYPE html> and include all necessary styling to make it visually appealing and colorful.`;
+
+    } else if (isInfographicRequest) {
+      // For infographic creation requests - create visual, data-driven infographics
+      systemPrompt = `YOU ARE AN EXPERT HTML INFOGRAPHIC DESIGNER. Your ONLY job is to create BEAUTIFUL, VISUAL, PROFESSIONAL infographics with colors, gradients, cards, and proper styling.
+
+CRITICAL: YOU MUST CREATE VISUAL HTML - NOT PLAIN TEXT!
+
+CREATIVE FREEDOM - VARIETY IS KEY!
+- **VARY YOUR LAYOUTS**: Don't use the same layout every time!
+- For social media infographics: Use vertical/portrait layouts with bold headlines
+- For dashboards: Use grid layouts with multiple metric cards
+- For timelines: Use horizontal or vertical timeline layouts
+- For comparisons: Use side-by-side or split layouts
+- For Facebook ads: Create compact, eye-catching designs with clear CTAs
+- For presentations: Use clean, hierarchical layouts with sections
+- **BE CREATIVE**: Each infographic should have a UNIQUE layout based on the user's specific request!
+
+ESSENTIAL VISUAL ELEMENTS:
+1. **Backgrounds**: Use gradients (linear-gradient, radial-gradient), colorful backgrounds, or light greys (#f5f5f5, #ffffff, #f0f0f0)
+2. **Gradients**: Create varied gradients - #A8C5FF-to-#C6B8FF, #FFD3A5-to-#FFAAA6, #B2F0E3-to-#A8D8FF, rainbow colors(#FFD3A5,#FFAAA6,#D4A5FF,#A5D8FF,#A5FFD6)
+3. **Cards & Boxes**: White cards with shadows, colorful bordered sections, gradient boxes
+4. **Typography**: Large numbers (36px-72px, bold), colored text, varied font sizes
+5. **Icons**: Use emoji (📈, 🌐, 🎯, 💬, 🚀, ✨, ⭐, etc.) or create icon-like elements
+6. **Colors**: Use vibrant colors - blues (#2196F3, #4A90E2), purples (#9B59B6), oranges (#FF9800), greens (#4CAF50), pinks (#E91E63)
+7. **Spacing**: Professional padding (20px-40px) and margins
+8. **Borders**: Rounded corners (border-radius: 8px-16px)
+9. **Shadows**: box-shadow: 0 2px 8px rgba(0,0,0,0.1) or 0 4px 12px rgba(0,0,0,0.08)
+
+LAYOUT INSPIRATIONS:
+
+For Social Media Infographics:
+- Vertical layout (portrait orientation)
+- Bold headline section at top
+- Icon + stat combinations
+- Call-to-action section at bottom
+- Compact design fitting mobile screens
+
+For Dashboards:
+- Grid of metric cards
+- Header section with title
+- Multiple rows/columns of data
+- Charts representation with colored bars
+- Filter or category sections
+
+For Timelines:
+- Horizontal or vertical flow
+- Milestone markers
+- Connecting lines
+- Date labels
+- Event descriptions
+
+For Comparisons:
+- Split-screen layouts
+- Side-by-side sections
+- Before/after sections
+- Venn diagrams (CSS-based)
+- Pros/cons lists with icons
+
+OUTPUT REQUIREMENTS:
+1. ALWAYS start with <!DOCTYPE html>
+2. ALWAYS include <html>, <head>, and <body> tags
+3. ALWAYS use inline styles (style="...") on EVERY element - NO external CSS
+4. VARY your gradients and color schemes - don't use the same colors every time!
+5. VARY your layout structures - be creative based on user's request
+6. ALWAYS use large, colored numbers/text (36px+, bold, colored)
+7. ALWAYS add icons/emoji to make it visual
+8. ALWAYS use proper colors for readability (#333 for dark, #FFF for light, vibrant colors for highlights)
+9. NEVER return plain text - EVERYTHING must have inline styling
+10. NEVER wrap in markdown code blocks - return RAW HTML
+11. **IMPORTANT**: Analyze the user's request and create an appropriate layout - for Facebook ads, make it compact; for dashboards, make it grid-based; for timelines, make it chronological; etc.
+
+CRITICAL: Create a UNIQUE, VISUAL infographic with varied layouts, colors, gradients, and styling - NOT the same template every time!`;
+
+    } else {
+      // For regular document creation requests - return comprehensive content
       systemPrompt = `You are a helpful AI assistant that creates high-quality, professional HTML documents. When a user requests a document, you should:
 
 1. **Be conversational and natural**: Write in a friendly, helpful tone similar to ChatGPT
@@ -287,23 +442,78 @@ Remember: You're not just generating content, you're being a helpful assistant w
       }
     }
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        {
-          role: "system",
-          content: systemPrompt
+    let generatedContent = '';
+    
+    // Determine which AI service to use based on available API keys
+    // Priority: OpenAI > Gemini > Error (if neither is configured)
+    const useOpenAI = OPENAI.API_KEY && !GEMINI.API_KEY;
+    const useGemini = GEMINI.API_KEY && !OPENAI.API_KEY;
+    
+    // Default to OpenAI if both keys are available, or if neither is available (fallback)
+    const shouldUseOpenAI = useOpenAI || (OPENAI.API_KEY && GEMINI.API_KEY) || (!OPENAI.API_KEY && !GEMINI.API_KEY);
+    
+    // Handle streaming for Gemini (always stream when using Gemini)
+    if (useGemini) {
+      const encoder = new TextEncoder();
+      
+      // Create a readable stream for streaming response
+      const readableStream = new ReadableStream({
+        async start(controller) {
+          try {
+            let fullContent = '';
+            for await (const chunk of createGeminiChatCompletionStream(
+              systemPrompt,
+              prompt,
+              {
+                maxTokens: 12000,
+                temperature: isInfographicRequest ? 0.3 : (isModification ? 0.1 : 0.7)
+              }
+            )) {
+              fullContent += chunk;
+              // Send each chunk to the client
+              controller.enqueue(encoder.encode(chunk));
+            }
+            controller.close();
+          } catch (error) {
+            controller.error(error);
+          }
         },
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
-      max_tokens: 12000, // Increased from 8000 to allow for longer, more comprehensive content
-      temperature: isModification ? 0.1 : 0.7, // Lower temperature for modifications, higher for creative document generation
-    });
+      });
 
-    const generatedContent = completion.choices[0]?.message?.content || '';
+      return new Response(readableStream, {
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        },
+      });
+    }
+    
+    if (shouldUseOpenAI && openai) {
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: systemPrompt
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        max_tokens: 12000, // Increased from 8000 to allow for longer, more comprehensive content
+        temperature: isInfographicRequest ? 0.3 : (isModification ? 0.1 : 0.7), // Lower temperature for infographics and modifications, higher for creative document generation
+      });
+
+      generatedContent = completion.choices[0]?.message?.content || '';
+    } else if (!openai && !GEMINI.API_KEY) {
+      throw new Error('No AI service configured. Please set either OPENAI_API_KEY or GEMINI_API_KEY environment variable.');
+    } else if (shouldUseOpenAI && !openai) {
+      throw new Error('OpenAI API key is missing or invalid. Please check your OPENAI_API_KEY environment variable.');
+    } else {
+      throw new Error('Unable to determine AI service. Please check your API key configuration.');
+    }
     
     let htmlContent;
     if (isModification && currentContent) {
