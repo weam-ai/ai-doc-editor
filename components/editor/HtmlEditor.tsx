@@ -3,7 +3,6 @@
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
-import { Card } from '@/components/ui/Card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { useState, useEffect, useRef } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
@@ -1998,7 +1997,8 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
           .preserve-styles-editor {
             border: 1px solid #e5e7eb;
             border-radius: 0.5rem;
-            overflow: hidden;
+            overflow: auto;
+            max-height: 600px;
           }
           
           .editable-content {
@@ -2006,7 +2006,6 @@ function PreserveStyleEditor({ content, onChange, editorRef: externalEditorRef, 
             padding: 16px !important;
             outline: none;
             background: white;
-            overflow: auto;
             font-family: system-ui, -apple-system, sans-serif;
             font-size: 14px;
             line-height: 1.5;
@@ -2325,43 +2324,40 @@ export default function HtmlEditor({ content, onChange, editorRef, onFontFamilyC
   return (
     <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="preview">Live Preview</TabsTrigger>
-          <TabsTrigger value="html">HTML Code</TabsTrigger>
+        <TabsList className="w-full flex">
+          <TabsTrigger value="preview" className="flex-1">Live Preview</TabsTrigger>
+          <div className="w-px mx-2 self-stretch bg-gray-200 dark:bg-gray-700" />
+          <TabsTrigger value="html" className="flex-1">HTML Code</TabsTrigger>
         </TabsList>
 
         <TabsContent value="preview" className="space-y-4">
-          <Card className="p-6">
-            <div className="bg-white min-h-[500px] overflow-auto">
-              <PreserveStyleEditor
-                content={extractBodyContent(htmlContent)}
-                onChange={handlePreviewChange}
-                editorRef={editorRef}
-                onFontFamilyChange={onFontFamilyChange}
-              />
-            </div>
-          </Card>
+          <div className="bg-white min-h-[500px]">
+            <PreserveStyleEditor
+              content={extractBodyContent(htmlContent)}
+              onChange={handlePreviewChange}
+              editorRef={editorRef}
+              onFontFamilyChange={onFontFamilyChange}
+            />
+          </div>
         </TabsContent>
 
         <TabsContent value="html" className="space-y-4">
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4">HTML Source Code</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Edit HTML Content
-                </label>
-                <Textarea
-                  value={htmlContent}
-                  onChange={(e) => handleHtmlCodeChange(e.target.value)}
-                  placeholder="Enter your HTML content here..."
-                  rows={20}
-                  className="font-mono text-sm"
-                />
-              </div>
-
+          {/* <h3 className="text-lg font-semibold mb-4">HTML Source Code</h3> */}
+          <div className="space-y-4">
+            <div>
+              {/* <label className="block text-sm font-medium mb-2">
+                Edit HTML Content
+              </label> */}
+              <Textarea
+                value={htmlContent}
+                onChange={(e) => handleHtmlCodeChange(e.target.value)}
+                placeholder="Enter your HTML content here..."
+                rows={20}
+                className="font-mono text-sm"
+              />
             </div>
-          </Card>
+
+          </div>
         </TabsContent>
       </Tabs>
     </div>
