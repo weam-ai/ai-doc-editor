@@ -1,6 +1,6 @@
 # Ai Docs - AI-Powered Document Editor
 
-A modern, AI-powered document editor similar to Genspark Ai Docs, built with Next.js 14, MongoDB, and OpenAI integration.
+A modern, AI-powered document editor similar to Genspark Ai Docs, built with Next.js 14, MongoDB, and Gemini integration.
 
 ## ✨ Features
 
@@ -45,7 +45,7 @@ A modern, AI-powered document editor similar to Genspark Ai Docs, built with Nex
 - **UI Components**: shadcn/ui, Radix UI primitives
 - **Database**: MongoDB with Mongoose
 - **Authentication**: Iron Session with secure cookies
-- **AI Integration**: OpenAI GPT-4o-mini API
+- **AI Integration**: Google Gemini API
 - **Rich Text Editor**: Tiptap with comprehensive extensions
 - **Markdown**: React-Markdown with syntax highlighting
 - **Export**: jsPDF, html-to-docx, custom HTML export
@@ -55,7 +55,7 @@ A modern, AI-powered document editor similar to Genspark Ai Docs, built with Nex
 ### Prerequisites
 - Node.js 18+ 
 - MongoDB instance (local or cloud)
-- OpenAI API key
+- Gemini API key
 
 ### 1. Clone the Repository
 ```bash
@@ -79,8 +79,8 @@ MONGODB_URI=mongodb://localhost:27017/ai-docs
 NEXT_PUBLIC_COOKIE_NAME=your-cookie
 NEXT_PUBLIC_COOKIE_PASSWORD=your-secure-password-here
 
-# OpenAI
-OPENAI_API_KEY=your-openai-api-key
+# Gemini
+GEMINI_API_KEY=your-gemini-api-key
 ```
 
 ### 4. Iron Session Setup
@@ -88,8 +88,8 @@ OPENAI_API_KEY=your-openai-api-key
 2. Set the `NEXT_PUBLIC_COOKIE_PASSWORD` environment variable
 3. Customize cookie name if needed via `NEXT_PUBLIC_COOKIE_NAME`
 
-### 5. OpenAI API Setup
-1. Visit [OpenAI Platform](https://platform.openai.com/)
+### 5. Gemini API Setup
+1. Visit [Google AI Studio](https://aistudio.google.com/)
 2. Create an account and get your API key
 3. Add the key to your `.env.local` file
 
@@ -217,5 +217,4 @@ This project is licensed under the MIT License.
 
 ---
 
-Built with ❤️ using Next.js, MongoDB, and OpenAI
-
+Built with ❤️ using Next.js, MongoDB, and Gemini
