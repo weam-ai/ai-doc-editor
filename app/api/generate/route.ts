@@ -1,15 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import OpenAI from 'openai';
 import dbConnect from '@/lib/db';
 import ChatHistory from '@/models/ChatHistory';
 import { getSession } from '@/app/config/withSession';
-import { OPENAI, GEMINI } from '@/app/config/config';
+import { GEMINI } from '@/app/config/config';
 import { createGeminiChatCompletionStream } from '@/lib/gemini';
-
-// Initialize OpenAI client only when API key is available
-const openai = OPENAI.API_KEY ? new OpenAI({
-  apiKey: OPENAI.API_KEY,
-}) : null;
 
 // Function to detect if meaningful changes were made
 function hasMeaningfulChanges(oldContent: string, newContent: string): boolean {
@@ -442,225 +436,41 @@ Remember: You're not just generating content, you're being a helpful assistant w
       }
     }
 
-    let generatedContent = '';
-    
-    // Determine which AI service to use based on available API keys
-    // Priority: OpenAI > Gemini > Error (if neither is configured)
-    const useOpenAI = OPENAI.API_KEY && !GEMINI.API_KEY;
-    const useGemini = GEMINI.API_KEY && !OPENAI.API_KEY;
-    
-    // Default to OpenAI if both keys are available, or if neither is available (fallback)
-    const shouldUseOpenAI = useOpenAI || (OPENAI.API_KEY && GEMINI.API_KEY) || (!OPENAI.API_KEY && !GEMINI.API_KEY);
-    
-    // Handle streaming for Gemini (always stream when using Gemini)
-    if (useGemini) {
-      const encoder = new TextEncoder();
-      
-      // Create a readable stream for streaming response
-      const readableStream = new ReadableStream({
-        async start(controller) {
-          try {
-            let fullContent = '';
-            for await (const chunk of createGeminiChatCompletionStream(
-              systemPrompt,
-              prompt,
-              {
-                maxTokens: 12000,
-                temperature: isInfographicRequest ? 0.3 : (isModification ? 0.1 : 0.7)
-              }
-            )) {
-              fullContent += chunk;
-              // Send each chunk to the client
-              controller.enqueue(encoder.encode(chunk));
+    // Require Gemini API key
+    if (!GEMINI.API_KEY) {
+      return NextResponse.json(
+        { error: 'No AI service configured. Please set GEMINI_API_KEY environment variable.' },
+        { status: 500 }
+      );
+    }
+
+    const encoder = new TextEncoder();
+    const readableStream = new ReadableStream({
+      async start(controller) {
+        try {
+          for await (const chunk of createGeminiChatCompletionStream(
+            systemPrompt,
+            prompt,
+            {
+              maxTokens: 12000,
+              temperature: isInfographicRequest ? 0.3 : (isModification ? 0.1 : 0.7)
             }
-            controller.close();
-          } catch (error) {
-            controller.error(error);
+          )) {
+            controller.enqueue(encoder.encode(chunk));
           }
-        },
-      });
-
-      return new Response(readableStream, {
-        headers: {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive',
-        },
-      });
-    }
-    
-    if (shouldUseOpenAI && openai) {
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [
-          {
-            role: "system",
-            content: systemPrompt
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        max_tokens: 12000, // Increased from 8000 to allow for longer, more comprehensive content
-        temperature: isInfographicRequest ? 0.3 : (isModification ? 0.1 : 0.7), // Lower temperature for infographics and modifications, higher for creative document generation
-      });
-
-      generatedContent = completion.choices[0]?.message?.content || '';
-    } else if (!openai && !GEMINI.API_KEY) {
-      throw new Error('No AI service configured. Please set either OPENAI_API_KEY or GEMINI_API_KEY environment variable.');
-    } else if (shouldUseOpenAI && !openai) {
-      throw new Error('OpenAI API key is missing or invalid. Please check your OPENAI_API_KEY environment variable.');
-    } else {
-      throw new Error('Unable to determine AI service. Please check your API key configuration.');
-    }
-    
-    let htmlContent;
-    if (isModification && currentContent) {
-      // For modifications, the AI should return HTML directly
-      let cleanContent = generatedContent;
-      
-      // Remove markdown code blocks if AI wrapped the response
-      if (cleanContent.includes('```html')) {
-        const htmlMatch = cleanContent.match(/```html\s*([\s\S]*?)\s*```/);
-        if (htmlMatch) {
-          cleanContent = htmlMatch[1];
-        } else {
-          console.warn('Failed to extract HTML from markdown wrapper');
+          controller.close();
+        } catch (error) {
+          controller.error(error);
         }
-      }
-      
-      // Validate that the response is actually HTML
-      if (cleanContent.trim().startsWith('<!DOCTYPE') || cleanContent.trim().startsWith('<html') || cleanContent.trim().startsWith('<')) {
-        htmlContent = cleanContent;
-        
-        // Additional validation: check if the AI actually made the requested change
-        if (prompt.toLowerCase().includes('logo') && prompt.toLowerCase().includes('change')) {
-          const hasOriginalText = htmlContent.includes('Your Logo');
-          const hasModifiedText = htmlContent.includes('My Logo');
-          
-          // If AI didn't make the change, try to make it ourselves
-          if (hasOriginalText && !hasModifiedText && prompt.toLowerCase().includes('my logo')) {
-            htmlContent = htmlContent.replace(/Your Logo/g, 'My Logo');
-          }
-        }
+      },
+    });
 
-        // Additional validation for role changes
-        if (prompt.toLowerCase().includes('change') && (prompt.toLowerCase().includes('to') || prompt.toLowerCase().includes('into'))) {
-          // Check if it's a job title change by looking for common patterns
-          const roleChangePatterns = [
-            /change\s+(\w+\s*\w*)\s+to\s+(\w+\s*\w*)/i,
-            /change\s+(\w+\s*\w*)\s+into\s+(\w+\s*\w*)/i,
-            /update\s+(\w+\s*\w*)\s+to\s+(\w+\s*\w*)/i,
-            /convert\s+(\w+\s*\w*)\s+to\s+(\w+\s*\w*)/i
-          ];
-          
-          for (const pattern of roleChangePatterns) {
-            const match = prompt.match(pattern);
-            if (match) {
-              const fromRole = match[1].trim();
-              const toRole = match[2].trim();
-              break;
-            }
-          }
-        }
-      } else {
-        // If AI didn't return HTML, fall back to the original content
-        console.warn('AI response is not HTML, falling back to original content');
-        htmlContent = currentContent;
-      }
-    } else {
-      // For new documents, AI now returns HTML directly
-      let cleanContent = generatedContent;
-      
-      // Remove markdown code blocks if AI wrapped the response
-      if (cleanContent.includes('```html')) {
-        const htmlMatch = cleanContent.match(/```html\s*([\s\S]*?)\s*```/);
-        if (htmlMatch) {
-          cleanContent = htmlMatch[1];
-        } else {
-          console.warn('Failed to extract HTML from markdown wrapper');
-        }
-      }
-      
-      // Validate that the response is actually HTML
-      if (cleanContent.trim().startsWith('<!DOCTYPE') || cleanContent.trim().startsWith('<html') || cleanContent.trim().startsWith('<')) {
-        htmlContent = cleanContent;
-      } else {
-        // If AI didn't return HTML, create a basic HTML wrapper
-        console.warn('AI response is not HTML, creating basic HTML wrapper');
-        htmlContent = `<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generated Document</title>
-</head>
-<body>
-    <div>${generatedContent}</div>
-</body>
-</html>`;
-      }
-    }
-
-    // Track changes for the response
-    const changeResult = trackChanges(currentContent || '', htmlContent, prompt);
-    
-    // Only return the modified content if actual changes were made
-    const responseContent = changeResult.hasChanges ? generatedContent : currentContent || generatedContent;
-    const responseHtml = changeResult.hasChanges ? htmlContent : currentContent || htmlContent;
-
-    // Save chat history to database
-    try {
-      const session = await getSession();
-      
-      // Only save chat history if documentId exists and is not a template preview
-      if (session?.user?._id && documentId && !documentId.startsWith('template_')) {
-        const userId = session.user._id;
-        const userEmail = session.user.email;
-        const companyId = session.user.companyId;
-        
-        // Find existing chat history or create new one
-        let chatHistory = await ChatHistory.findOne({
-          documentId: documentId,
-          'user.id': userId
-        });
-
-        const newMessage = {
-          type: 'user',
-          message: prompt,
-          response: responseContent,
-          timestamp: new Date(),
-        };
-
-        if (chatHistory) {
-          // Update existing chat history by adding new message
-          chatHistory.messages.push(newMessage);
-          await chatHistory.save();
-        } else {
-          // Create new chat history
-          chatHistory = new ChatHistory({
-            documentId,
-            user: {
-              id: userId,
-              email: userEmail,
-            },
-            companyId: companyId,
-            messages: [newMessage],
-          });
-          await chatHistory.save();
-        }
-      }
-    } catch (chatError) {
-      console.error('Error saving chat history:', chatError);
-      // Don't fail the main request if chat history saving fails
-    }
-
-    return NextResponse.json({
-      content: responseContent,
-      contentHtml: responseHtml,
-      changeSummary: changeResult.summary,
-      hasChanges: changeResult.hasChanges,
+    return new Response(readableStream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      },
     });
 
   } catch (error) {
