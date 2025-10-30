@@ -558,6 +558,22 @@ export default function EditorPage() {
   };
 
   const generateAIResponse = async (request: string, currentContent: string, onChunk?: (chunk: string) => void) => {
+    // Sanitize AI output to ensure only HTML is shown (strip prefaces)
+    const sanitizeAIHtml = (raw: string): string => {
+      if (!raw) return raw;
+      let text = raw;
+      // Strip markdown fences
+      const fenceMatch = text.match(/```html\s*([\s\S]*?)\s*```/i) || text.match(/```\s*([\s\S]*?)\s*```/i);
+      if (fenceMatch) {
+        text = fenceMatch[1];
+      }
+      // Trim anything before the first HTML tag
+      const firstTagIndex = text.indexOf('<');
+      if (firstTagIndex > 0) {
+        text = text.slice(firstTagIndex);
+      }
+      return text;
+    };
     // Detect if this is a new/template document or an existing document with real content
     const isNewOrTemplateDocument = (content: string) => {
       // Check for default blank document content
@@ -713,12 +729,12 @@ export default function EditorPage() {
           
           // Call onChunk callback to update UI progressively
           if (onChunk) {
-            onChunk(accumulatedContent);
+            onChunk(sanitizeAIHtml(accumulatedContent));
           }
         }
         
         // Return accumulated content
-        const htmlContent = accumulatedContent;
+        const htmlContent = sanitizeAIHtml(accumulatedContent);
         
         if (htmlContent && htmlContent.trim().startsWith('<')) {
           return htmlContent;
@@ -730,12 +746,14 @@ export default function EditorPage() {
       // Handle non-streaming response (OpenAI or Gemini non-streaming)
       const data = await response.json();
       
-      if (data.contentHtml && data.contentHtml.trim().startsWith('<')) {
-        return data.contentHtml;
+      if (data.contentHtml) {
+        const clean = sanitizeAIHtml(data.contentHtml);
+        if (clean.trim().startsWith('<')) return clean;
+        return clean;
       } else if (!isModification && data.content) {
         // For new document creation, if no HTML is provided, return the raw content
         // This allows ChatGPT-like responses to be displayed as-is
-        return data.content;
+        return sanitizeAIHtml(data.content);
       } else if (isBlankDocument && isContentGenerationRequest(request) && data.content) {
         // Special case: for blank documents with content generation requests,
         // if we get content but no HTML, wrap it in basic HTML structure
@@ -998,7 +1016,7 @@ export default function EditorPage() {
                     }
                     value={docRequest}
                     onChange={(e) => setDocRequest(e.target.value)}
-                    className="min-h-[80px] resize-none"
+                    className="min-h-[250px] resize-none"
                     onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleDocRequest()}
                     disabled={isLoading}
                   />
