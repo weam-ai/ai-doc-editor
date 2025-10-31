@@ -14,7 +14,7 @@ export const weeklyProgressReportTemplate = {
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>GOLDEN WING HOTEL - Weekly Progress Report</title>
 </head>
-<body style="max-width:880px; margin:0 auto; padding:32px 80px; font-family:Arial, Helvetica, sans-serif; background:#fff; color:#333; box-sizing:border-box;">
+<body>
 
   <!-- Header pattern -->
   <div style="height:40px; background-image:url('https://page1.genspark.site/v1/base64_upload/3353c3a30733212e7288f9919009f36a'); background-repeat:repeat; background-size:auto; border-radius:0 0 20px 20px / 0 0 40px 40px; margin-bottom:20px;"></div>
@@ -31,18 +31,15 @@ export const weeklyProgressReportTemplate = {
   <div style="margin-bottom:30px;">
     <div style="display:flex; align-items:center; margin-bottom:15px; font-size:14px;">
       <span style="font-weight:600; min-width:80px; margin-right:15px;">Name:</span>
-      <input type="text" placeholder="Insert name here"
-             style="flex:1; border:none; border-bottom:1px solid #333; background:transparent; padding:5px 0; font-size:14px; color:#333;"/>
+      <span style="flex:1; border:none; border-bottom:1px solid #333; background:transparent; padding:5px 0; font-size:14px; color:#333; display:inline-block;"></span>
     </div>
     <div style="display:flex; align-items:center; margin-bottom:15px; font-size:14px;">
       <span style="font-weight:600; min-width:80px; margin-right:15px;">Position:</span>
-      <input type="text" placeholder="Insert role here"
-             style="flex:1; border:none; border-bottom:1px solid #333; background:transparent; padding:5px 0; font-size:14px; color:#333;"/>
+      <span style="flex:1; border:none; border-bottom:1px solid #333; background:transparent; padding:5px 0; font-size:14px; color:#333; display:inline-block;"></span>
     </div>
     <div style="display:flex; align-items:center; margin-bottom:15px; font-size:14px;">
       <span style="font-weight:600; min-width:80px; margin-right:15px;">Date:</span>
-      <input type="text" value="Jan 9, 2030"
-             style="flex:1; border:none; border-bottom:1px solid #333; background:transparent; padding:5px 0; font-size:14px; color:#333;"/>
+      <span style="flex:1; border:none; border-bottom:1px solid #333; background:transparent; padding:5px 0; font-size:14px; color:#333; display:inline-block;"></span>
     </div>
   </div>
 
@@ -61,9 +58,9 @@ export const weeklyProgressReportTemplate = {
           <div style="margin:5px 0; font-size:13px;">• HH:MM:SS AM/PM</div>
         </td>
         <td style="padding:15px 10px; vertical-align:top; font-size:13px; width:40%;">
-          <label style="margin:5px 0; display:flex; align-items:center;"><input type="checkbox" style="margin-right:8px;"/> <span>You can even make checklists</span></label>
-          <label style="margin:5px 0; display:flex; align-items:center;"><input type="checkbox" style="margin-right:8px;"/> <span>Now you can check on your list</span></label>
-          <label style="margin:5px 0; display:flex; align-items:center;"><input type="checkbox" style="margin-right:8px;"/> <span>Have another box to tick</span></label>
+          <label style="margin:5px 0; display:flex; align-items:center;"><input type="checkbox" style="margin-right:8px;"> <span>You can even make checklists</span></label>
+          <label style="margin:5px 0; display:flex; align-items:center;"><input type="checkbox" style="margin-right:8px;"> <span>Now you can check on your list</span></label>
+          <label style="margin:5px 0; display:flex; align-items:center;"><input type="checkbox" style="margin-right:8px;"> <span>Have another box to tick</span></label>
         </td>
         <td style="padding:15px 10px; vertical-align:top; font-size:13px; width:40%; color:#666;">
           This is what the text looks like when it's inside a table.
@@ -75,9 +72,9 @@ export const weeklyProgressReportTemplate = {
           <div style="margin:5px 0; font-size:13px;">• HH:MM:SS AM/PM</div>
         </td>
         <td style="padding:15px 10px; vertical-align:top; font-size:13px; width:40%;">
-          <label style="margin:5px 0; display:flex; align-items:center;"><input type="checkbox" style="margin-right:8px;"/> <span>You can even make checklists</span></label>
-          <label style="margin:5px 0; display:flex; align-items:center;"><input type="checkbox" style="margin-right:8px;"/> <span>Now you can check on your list</span></label>
-          <label style="margin:5px 0; display:flex; align-items:center;"><input type="checkbox" style="margin-right:8px;"/> <span>Have another box to tick</span></label>
+          <label style="margin:5px 0; display:flex; align-items:center;"><input type="checkbox" style="margin-right:8px;"> <span>You can even make checklists</span></label>
+          <label style="margin:5px 0; display:flex; align-items:center;"><input type="checkbox" style="margin-right:8px;"> <span>Now you can check on your list</span></label>
+          <label style="margin:5px 0; display:flex; align-items:center;"><input type="checkbox" style="margin-right:8px;"> <span>Have another box to tick</span></label>
         </td>
         <td style="padding:15px 10px; vertical-align:top; font-size:13px; width:40%; color:#666;">
           This is what the text looks like when it's inside a table.
@@ -89,9 +86,9 @@ export const weeklyProgressReportTemplate = {
           <div style="margin:5px 0; font-size:13px;">• HH:MM:SS AM/PM</div>
         </td>
         <td style="padding:15px 10px; vertical-align:top; font-size:13px; width:40%;">
-          <label style="margin:5px 0; display:flex; align-items:center;"><input type="checkbox" style="margin-right:8px;"/> <span>You can even make checklists</span></label>
-          <label style="margin:5px 0; display:flex; align-items:center;"><input type="checkbox" style="margin-right:8px;"/> <span>Now you can check on your list</span></label>
-          <label style="margin:5px 0; display:flex; align-items:center;"><input type="checkbox" style="margin-right:8px;"/> <span>Have another box to tick</span></label>
+          <label style="margin:5px 0; display:flex; align-items:center;"><input type="checkbox" style="margin-right:8px;"> <span>You can even make checklists</span></label>
+          <label style="margin:5px 0; display:flex; align-items:center;"><input type="checkbox" style="margin-right:8px;"> <span>Now you can check on your list</span></label>
+          <label style="margin:5px 0; display:flex; align-items:center;"><input type="checkbox" style="margin-right:8px;"> <span>Have another box to tick</span></label>
         </td>
         <td style="padding:15px 10px; vertical-align:top; font-size:13px; width:40%; color:#666;">
           This is what the text looks like when it's inside a table.
@@ -106,9 +103,9 @@ export const weeklyProgressReportTemplate = {
     <div style="flex:1;">
       <div style="background:#daa520; color:#fff; padding:10px 15px; font-weight:600; text-align:center; font-size:14px; letter-spacing:1px; margin:0;">COMPLETED</div>
       <div style="background:#fff8dc; padding:15px; border:1px solid #daa520; border-top:none; min-height:100px;">
-        <label style="margin:8px 0; display:flex; align-items:center; font-size:13px;"><input type="checkbox" style="margin-right:8px;"/> You can even make checklists</label>
-        <label style="margin:8px 0; display:flex; align-items:center; font-size:13px;"><input type="checkbox" style="margin-right:8px;"/> Now you can check on your list</label>
-        <label style="margin:8px 0; display:flex; align-items:center; font-size:13px;"><input type="checkbox" style="margin-right:8px;"/> Have another box to tick</label>
+        <label style="margin:8px 0; display:flex; align-items:center; font-size:13px;"><input type="checkbox" style="margin-right:8px;"> You can even make checklists</label>
+        <label style="margin:8px 0; display:flex; align-items:center; font-size:13px;"><input type="checkbox" style="margin-right:8px;"> Now you can check on your list</label>
+        <label style="margin:8px 0; display:flex; align-items:center; font-size:13px;"><input type="checkbox" style="margin-right:8px;"> Have another box to tick</label>
       </div>
     </div>
 

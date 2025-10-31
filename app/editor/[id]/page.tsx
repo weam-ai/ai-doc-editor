@@ -917,7 +917,7 @@ export default function EditorPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="pdf">PDF</SelectItem>
-                  <SelectItem value="word">Word</SelectItem>
+                  {/* <SelectItem value="word">Word</SelectItem> */}
                   <SelectItem value="html">HTML</SelectItem>
                 </SelectContent>
               </Select>
